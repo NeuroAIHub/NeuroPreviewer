@@ -1,7 +1,7 @@
 {
-  "name": "@brainpilot/dsh-neuro-preview",
+  "name": "@neuroaihub/dsh-neuro-previewer",
   "version": "0.1.0-alpha.1",
-  "description": "Read-only neuroscience data previews for DeepSeek Harness",
+  "description": "A read-only neuroscience data preview plugin for DeepSeek Harness (DSH)",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -20,6 +20,18 @@
     "docs/**",
     "scripts/**"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NeuroAIHub/NeuroPreview.git"
+  },
+  "homepage": "https://github.com/NeuroAIHub/NeuroPreview#readme",
+  "bugs": {
+    "url": "https://github.com/NeuroAIHub/NeuroPreview/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -46,14 +58,15 @@
     "prepack": "npm run check"
   },
   "keywords": [
+    "dsh-plugin",
     "deepseek-harness",
     "neuroscience",
     "nifti",
-    "brainpilot"
+    "neuroimaging"
   ],
-  "license": "AGPL-3.0-only",
+  "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": "^22.19.0 || >=24.0.0"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.1",

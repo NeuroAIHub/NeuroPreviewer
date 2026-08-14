@@ -1,6 +1,8 @@
-# BrainPilot Neuro Preview for DeepSeek Harness
+# NeuroPreviewer — DeepSeek Harness 神经科学数据预览插件
 
-面向 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness) 的只读神经科学数据预览插件。模型通过 `neuro_preview` Tool 读取数据，DSH Web 客户端通过专用卡片显示二维灰度切片。
+**NeuroPreviewer 是一个 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness) 插件**，不是独立的数据查看器。它以 DSH bundle + Web client plugin 的形式安装：模型通过 `neuro_preview` Tool 只读检查神经科学数据，DSH Web 客户端通过专用卡片显示二维灰度切片。
+
+包名：`@neuroaihub/dsh-neuro-previewer` · GitHub：[NeuroAIHub/NeuroPreview](https://github.com/NeuroAIHub/NeuroPreview) · 许可证：[MIT](LICENSE)
 
 > 当前状态：`0.1.0-alpha.1`。已经完成 NIfTI-1 的首个端到端纵切面；DSH 与本插件的公开接口仍可能在 RC/alpha 阶段变化。
 
@@ -34,12 +36,23 @@
 ### 构建
 
 ```bash
-cd ~/dsh-neuro-preview
+git clone https://github.com/NeuroAIHub/NeuroPreview.git
+cd NeuroPreview
 npm install
 npm run check
 ```
 
 ### 安装到 DSH Web profile
+
+从 npm 安装发布版本：
+
+```bash
+dsh plugin --profile web add @neuroaihub/dsh-neuro-previewer@0.1.0-alpha.1
+dsh --profile web --dump-config
+dsh --profile web
+```
+
+从本地 checkout 安装开发版本：
 
 ```bash
 dsh plugin --profile web add "$(pwd)"
@@ -50,8 +63,8 @@ dsh --profile web
 `--dump-config` 中应出现：
 
 ```yaml
-- id: brainpilot-neuro-preview
-  name: '@brainpilot/dsh-neuro-preview'
+- id: neuro-previewer
+  name: '@neuroaihub/dsh-neuro-previewer'
   config:
     maxFileBytes: 268435456
     maxSlicePixels: 4194304
@@ -195,4 +208,4 @@ DSH Web NeuroPreviewRow + Canvas
 
 ## 许可
 
-插件代码使用 `AGPL-3.0-only`。真实测试数据不随代码再分发，各自保留原始数据源的许可、引用和隐私约束；下载即表示使用者自行遵守相应条款。
+NeuroPreviewer 插件代码使用 [MIT License](LICENSE)。真实测试数据不随代码再分发，各自保留原始数据源的许可、引用和隐私约束；下载即表示使用者自行遵守相应条款。

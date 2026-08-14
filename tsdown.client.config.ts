@@ -1,6 +1,6 @@
 import { defineConfig } from 'tsdown'
 
-const id = '@brainpilot/dsh-neuro-preview'
+const id = '@neuroaihub/dsh-neuro-previewer'
 
 export default defineConfig({
   entry: { client: 'src/client.tsx' },

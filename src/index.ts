@@ -12,7 +12,7 @@ export * from './core/nifti.js'
 export * from './core/preview.js'
 export type * from './core/types.js'
 
-export const name = 'brainpilot-neuro-preview'
+export const name = 'neuro-previewer'
 export const inject = ['tools', 'fs']
 
 export interface Config {
