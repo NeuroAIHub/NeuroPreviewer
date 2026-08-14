@@ -2,7 +2,7 @@
 
 **NeuroPreviewer 是一个 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness) 插件**，不是独立的数据查看器。它以 DSH bundle + Web client plugin 的形式安装：模型通过 `neuro_preview` Tool 只读检查神经科学数据，DSH Web 客户端通过专用卡片显示二维灰度切片。
 
-包名：`@neuroaihub/dsh-neuro-previewer` · GitHub：[NeuroAIHub/NeuroPreview](https://github.com/NeuroAIHub/NeuroPreview) · 许可证：[MIT](LICENSE)
+包名：`@neuroaihub/dsh-neuro-previewer` · GitHub：[NeuroAIHub/NeuroPreviewer](https://github.com/NeuroAIHub/NeuroPreviewer) · 许可证：[MIT](LICENSE)
 
 > 当前状态：`0.1.0-alpha.1`。已经完成 NIfTI-1 的首个端到端纵切面；DSH 与本插件的公开接口仍可能在 RC/alpha 阶段变化。
 
@@ -36,8 +36,8 @@
 ### 构建
 
 ```bash
-git clone https://github.com/NeuroAIHub/NeuroPreview.git
-cd NeuroPreview
+git clone https://github.com/NeuroAIHub/NeuroPreviewer.git
+cd NeuroPreviewer
 npm install
 npm run check
 ```

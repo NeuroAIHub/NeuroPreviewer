@@ -22,11 +22,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NeuroAIHub/NeuroPreview.git"
+    "url": "git+https://github.com/NeuroAIHub/NeuroPreviewer.git"
   },
-  "homepage": "https://github.com/NeuroAIHub/NeuroPreview#readme",
+  "homepage": "https://github.com/NeuroAIHub/NeuroPreviewer#readme",
   "bugs": {
-    "url": "https://github.com/NeuroAIHub/NeuroPreview/issues"
+    "url": "https://github.com/NeuroAIHub/NeuroPreviewer/issues"
   },
   "publishConfig": {
     "access": "public",
