@@ -1,0 +1,6 @@
+- insert:
+    - id: brainpilot-neuro-preview
+      name: '@brainpilot/dsh-neuro-preview'
+      config:
+        maxFileBytes: 268435456
+        maxSlicePixels: 4194304
