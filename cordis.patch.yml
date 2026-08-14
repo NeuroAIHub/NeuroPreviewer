@@ -4,3 +4,5 @@
       config:
         maxFileBytes: 268435456
         maxSlicePixels: 4194304
+        maxOpenDatasets: 2
+        maxTimeSeriesPoints: 1024

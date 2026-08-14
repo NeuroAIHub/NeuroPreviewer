@@ -1,6 +1,6 @@
 {
   "name": "@brainpilot/dsh-neuro-previewer",
-  "version": "0.1.0",
+  "version": "0.2.0-alpha.1",
   "description": "A read-only neuroscience data preview plugin for DeepSeek Harness (DSH)",
   "type": "module",
   "main": "lib/index.js",
@@ -39,7 +39,10 @@
     "client": {
       "platform": "web",
       "inject": [
+        "@deepseek-ai/dsh-client-connection",
         "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
         "@deepseek-ai/dsh-client-ui-tool"
       ]
     }
@@ -51,6 +54,7 @@
     "clean": "rm -rf lib coverage",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:design": "node design-demos/verify-prototypes.cjs",
     "test:real": "node scripts/smoke-real-data.mjs",
     "data:download": "bash scripts/download-real-data.sh",
     "typecheck": "tsc --noEmit",
@@ -70,7 +74,10 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-client-connection": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-runtime": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-tool": "0.1.0-rc.6",
     "@deepseek-ai/dsh-fs": "0.1.0-rc.6",
     "@deepseek-ai/dsh-tools": "0.1.0-rc.6",
@@ -78,12 +85,16 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-client-connection": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-runtime": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-tool": "0.1.0-rc.6",
     "@deepseek-ai/dsh-fs": "0.1.0-rc.6",
     "@deepseek-ai/dsh-tools": "0.1.0-rc.6",
     "@types/node": "^24.0.0",
     "@types/react": "^18.3.0",
+    "playwright": "^1.61.1",
     "react": "^18.3.0",
     "tsdown": "^0.22.2",
     "typescript": "^6.0.3",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inspectNifti, NeuroPreviewError } from '../src/core/nifti.js'
+import { inspectNifti, inspectNiftiTimeSeries, inspectNiftiVoxel, NeuroPreviewError } from '../src/core/nifti.js'
 import { niftiInt16Fixture } from './fixture.js'
 
 describe('inspectNifti', () => {
@@ -43,6 +43,24 @@ describe('inspectNifti', () => {
     expect(result.metadata.littleEndian).toBe(false)
     expect(result.frame.intensityMin).toBe(-5)
     expect(result.frame.intensityMax).toBe(41)
+  })
+
+  it('extracts a voxel value and its fourth-dimension time series', () => {
+    const bytes = niftiInt16Fixture({ dimensions: [4, 3, 2, 4], slope: 1, intercept: 0 })
+    expect(inspectNiftiVoxel(bytes, { x: 2, y: 1, z: 1, volume: 3 })).toBe(3112)
+    expect(inspectNiftiTimeSeries(bytes, { x: 2, y: 1, z: 1 })).toEqual({
+      indices: [0, 1, 2, 3],
+      values: [112, 1112, 2112, 3112],
+      min: 112,
+      max: 3112,
+    })
+  })
+
+  it('bounds long time series by evenly sampling the first and last volumes', () => {
+    const bytes = niftiInt16Fixture({ dimensions: [1, 1, 1, 9], slope: 1, intercept: 0 })
+    const series = inspectNiftiTimeSeries(bytes, { x: 0, y: 0, z: 0 }, 3)
+    expect(series.indices).toEqual([0, 4, 8])
+    expect(series.values).toEqual([0, 4000, 8000])
   })
 
   it('rejects malformed, truncated, out-of-range, and oversized requests', () => {

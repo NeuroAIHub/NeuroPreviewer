@@ -4,3 +4,5 @@ coverage/
 *.tgz
 .DS_Store
 test-data/real/
+design-demos/screenshots/dsh-after-*.png
+design-demos/screenshots/dsh-interactive-home.png

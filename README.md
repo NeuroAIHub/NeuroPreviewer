@@ -6,39 +6,37 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-> Preview neuroscience data directly inside DeepSeek Harness.
+> An interactive neuroscience data viewer built as a DeepSeek Harness plugin.
 
-**NeuroPreviewer is a neuroscience data preview plugin for [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness).** It is installed as a DSH bundle with a Web client extension—not as a standalone viewer. The model inspects local data through the read-only `neuro_preview` tool, while the DSH Web client renders the result as a dedicated preview card.
+**NeuroPreviewer is a [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) plugin, not a standalone desktop viewer.** Open its MPR workbench directly from the DSH sidebar, or enter it from a `neuro_preview` tool result. The Host reads local data while the browser receives only bounded preview frames and a sampled time series.
 
 `@brainpilot/dsh-neuro-previewer` · [GitHub](https://github.com/NeuroAIHub/NeuroPreviewer) · [MIT License](LICENSE)
 
-> **Compatibility:** Version `0.1.0` targets DeepSeek Harness `0.1.0-rc.6`. DSH remains a developer preview and may introduce breaking interface changes.
+![NeuroPreviewer interactive MPR workbench](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-interactive-workbench.png)
 
-## Why NeuroPreviewer?
+> **Release status:** npm `0.1.0` is the stable static-preview release. The interactive workbench is currently `0.2.0-alpha.1` on `main` and must be installed from source. Both target DSH `0.1.0-rc.6`; DSH is still a developer preview and may make breaking changes.
 
-NeuroPreviewer gives a DSH agent a safe, compact way to answer basic questions about a neuroscience file without sending the full dataset to the browser. The Host plugin reads and validates the file through DSH's filesystem interface, creates a bounded 2D preview, and returns structured metadata plus a Web-friendly grayscale frame.
-
-Current priorities are reproducibility, explicit resource limits, and graceful text output when the Web client is unavailable.
-
-## Current capabilities
+## What it does
 
 | Capability | Status | Details |
 | --- | --- | --- |
-| Single-file NIfTI-1 `.nii` | ✅ | Validates `sizeof_hdr=348` and the `n+1` magic |
-| 3D MRI | ✅ | Axial, coronal, and sagittal slices |
-| 4D fMRI | ✅ | Selectable zero-based `volume` |
+| Direct DSH viewer entry | ✅ alpha | Opens from the sidebar without requiring a conversation |
+| Linked MPR views | ✅ alpha | Axial, coronal, and sagittal canvases share one voxel cursor |
+| Direct spatial navigation | ✅ alpha | Click a plane or move the X/Y/Z sliders |
+| 4D navigation | ✅ alpha | Scrub, step, or play fMRI volumes |
+| Voxel time series | ✅ alpha | Plots the selected voxel across all volumes, with bounded sampling |
+| Conversation entry | ✅ | `neuro_preview` returns a preview card with a button into the workbench |
+| NIfTI-1 `.nii` | ✅ | 3D MRI and 4D fMRI; little- and big-endian |
 | Numeric data | ✅ | `uint8/int8/int16/uint16/int32/uint32/float32/float64` |
 | Intensity processing | ✅ | Applies `scl_slope`/`scl_inter` and a 2%–98% percentile window |
-| Endianness | ✅ | Little-endian and big-endian files |
-| DSH Web preview card | ✅ | Canvas image, dimensions, datatype, plane, and intensity range |
-| `.nii.gz` and NIfTI-2 | Planned | Real fixtures are available; decompression/parsing is not implemented yet |
-| BIDS metadata and CSV/TSV | Planned | Real BIDS sidecars and events files are available |
-| EDF/EDF+, BrainVision, EEGLAB | Planned | Real EEG/PSG fixtures are available; adapters are pending |
-| NWB and FIF | Planned | Intended for an optional Python worker |
+| `.nii.gz`, NIfTI-2 | Planned | Real fixtures exist; decompression/parsing is pending |
+| BIDS JSON/TSV | Planned | Sidecars, events, and dataset relationships |
+| EDF/EDF+, BrainVision, EEGLAB | Planned | Multichannel waveform and marker adapters |
+| NWB, FIF, CIFTI, GIFTI | Planned | Intended for an optional Python worker |
 
-The current renderer follows voxel storage order and does not yet reorient images using qform/sform. NeuroPreviewer is intended for research-data inspection and development—not clinical interpretation or diagnosis.
+Images currently follow voxel storage order; qform/sform reorientation is not yet applied. NeuroPreviewer is for research-data inspection and development, not clinical interpretation or diagnosis.
 
-## Quick start
+## Install
 
 ### Requirements
 
@@ -46,7 +44,7 @@ The current renderer follows voxel storage order and does not yet reorient image
 - npm and pnpm
 - DeepSeek Harness `0.1.0-rc.6`
 
-### Install from npm
+### Stable npm release (static preview)
 
 ```bash
 dsh plugin --profile web add @brainpilot/dsh-neuro-previewer@0.1.0
@@ -54,7 +52,7 @@ dsh --profile web --dump-config
 dsh --profile web
 ```
 
-### Build and install from source
+### Interactive alpha from source
 
 ```bash
 git clone https://github.com/NeuroAIHub/NeuroPreviewer.git
@@ -75,11 +73,21 @@ The dumped configuration should include:
   config:
     maxFileBytes: 268435456
     maxSlicePixels: 4194304
+    maxOpenDatasets: 2
+    maxTimeSeriesPoints: 1024
 ```
 
-## Using `neuro_preview`
+## Use the interactive workbench
 
-Example tool input:
+1. Start the DSH Web profile.
+2. Click **NeuroPreviewer** in the DSH sidebar.
+3. Enter an absolute `.nii` path accessible to the DSH Host.
+4. Click any anatomical plane or move X/Y/Z to change the shared voxel.
+5. For 4D data, scrub or play the time control; the selected-voxel plot updates with it.
+
+The same viewer can be opened from the preview card after a conversational tool call. Conversation is an optional entry point, not a requirement for interaction.
+
+Example `neuro_preview` input:
 
 ```json
 {
@@ -90,106 +98,80 @@ Example tool input:
 }
 ```
 
-| Parameter | Required | Default | Description |
-| --- | --- | --- | --- |
-| `path` | Yes | — | Path to a `.nii` file accessible through the DSH filesystem |
-| `axis` | No | `axial` | `axial`, `coronal`, or `sagittal` |
-| `index` | No | Middle slice | Zero-based slice index |
-| `volume` | No | `0` | Zero-based volume index for 4D data |
-
-Without the Web extension, the tool still returns a text summary containing dimensions, voxel size, datatype, slice position, intensity range, and warnings.
-
-## Testing with real neuroscience data
-
-Real datasets are downloaded to the gitignored `test-data/real/` directory and are never included in the repository or npm package. Every downloaded file is checked against [scripts/real-data.sha256](scripts/real-data.sha256).
-
-Download the complete corpus—approximately 190 MiB—and run the real-data smoke test:
-
-```bash
-npm run data:download
-npm run test:real
-```
-
-Individual format groups can also be downloaded:
-
-```bash
-bash scripts/download-real-data.sh nifti
-bash scripts/download-real-data.sh edf
-bash scripts/download-real-data.sh brainvision
-bash scripts/download-real-data.sh eeglab
-bash scripts/download-real-data.sh nwb
-```
-
-| Source | Domain and format | Local fixtures | Preview support |
-| --- | --- | --- | --- |
-| OpenNeuro `ds000005` | Human structural MRI and task fMRI; BIDS/NIfTI | 3D T1, 240-volume BOLD, JSON/TSV, compressed and uncompressed NIfTI | ✅ Two `.nii` files |
-| PhysioNet Sleep-EDF Expanded | Human sleep EEG/PSG; EDF+ | PSG and Hypnogram | Adapter pending |
-| PhysioNet EEGMMIDB | Human motor-imagery EEG; EDF+ | 64-channel baseline recording | Adapter pending |
-| OpenNeuro `ds007629` | Human natural-reading EEG; BrainVision | `.vhdr/.vmrk/.eeg` triplet | Adapter pending |
-| EEGLAB sample data | Human EEG; `.set/.fdt` and BrainVision | EEGLAB pair and a compact BrainVision regression sample | Adapter pending |
-| DANDI `000006` | Mouse ALM extracellular electrophysiology; NWB | Two compact `.nwb` sessions | Python worker pending |
-
-The current smoke test parses a real `160 × 192 × 192` 3D T1 image and a real `64 × 64 × 34 × 240` 4D fMRI image. Unsupported formats remain in the corpus as explicit negative fixtures so future adapters are tested against real files rather than synthetic substitutes.
-
-See [docs/real-datasets.md](docs/real-datasets.md) for pinned download URLs, licenses, citations, privacy notes, and per-file hashes. Public or de-identified human data must never be used for re-identification attempts.
-
-## Development and verification
-
-```bash
-npm run typecheck  # Strict TypeScript checking
-npm test           # Synthetic unit and contract tests
-npm run test:real  # Smoke tests against locally downloaded real NIfTI data
-npm run build      # Host ESM and DSH Web client bundles
-npm run check      # typecheck + unit tests + build
-```
-
-The synthetic suite covers header validation, truncated inputs, little/big endian data, all three slice planes, 4D volumes, slope/intercept scaling, invalid indices, pixel limits, cancellation, DSH tool registration, filesystem adaptation, text output, and client presentation metadata.
+Without the Web extension, the tool still returns a text summary of dimensions, voxel size, datatype, location, intensity range, and warnings.
 
 ## Architecture
 
 ```text
-DSH neuro_preview Tool
-        │
-        ▼
-NeuroPreview Interface
-        │
-        ├── NIfTI Adapter (current)
-        ├── EDF / BrainVision Adapters (planned)
-        └── Python Worker Adapter (planned: NWB/FIF/EEGLAB)
-        │
-        ▼
-Unified PreviewDocument
-        │
-        ▼
-DSH Web NeuroPreviewRow + Canvas
+DSH sidebar ───────────────┐
+                          ├──► Web MPR workbench
+neuro_preview result card ┘          │
+                                     │ loopback RPC: open / view / close
+                                     ▼
+                            InteractiveNeuroPreview
+                              bounded Host cache
+                                     │
+                                     ▼
+                           NIfTI parser and slicer
+                                     │
+                  three 2D frames + sampled voxel series
+                                     ▼
+                                  Browser
 ```
 
-The format-neutral core is kept separate from the DSH integration:
+The static tool path and interactive session share the same format-neutral NIfTI core. The important module boundaries are:
 
-- `src/core/preview.ts` defines the `NeuroPreview` interface.
-- `src/core/nifti.ts` detects and parses NIfTI-1 files and extracts slices.
-- `src/dsh/source.ts` adapts DSH `ctx.fs` into a bounded `BinarySource`.
-- `src/index.ts` registers the Host tool and model-facing output.
-- `src/client.tsx` implements the DSH Web tool card.
+- `src/core/nifti.ts`: validates NIfTI-1 and extracts slices, voxel values, and time series.
+- `src/core/interactive.ts`: owns bounded datasets and produces synchronized MPR views.
+- `src/dsh/source.ts`: adapts DSH `ctx.fs` into a size-limited binary source.
+- `src/dsh/rpc.ts`: exposes loopback-only `open`, `view`, and `close` operations.
+- `src/index.ts`: registers the Host tool, configuration, and RPC service.
+- `src/client/workbench.tsx`: renders the DSH MPR workbench and direct controls.
 
-## Safety and resource limits
+## Testing with real neuroscience data
 
-- File access is read-only and goes exclusively through DSH `ctx.fs`.
-- The default maximum file size is 256 MiB.
-- The default maximum slice size is 4,194,304 pixels.
+Real datasets are downloaded to gitignored `test-data/real/`; they are not committed or packed. Downloads are verified against [scripts/real-data.sha256](scripts/real-data.sha256).
+
+```bash
+npm run data:download  # complete corpus, approximately 190 MiB
+npm run test:real
+```
+
+The real-data smoke test parses an OpenNeuro `160 × 192 × 192` T1 image and a `64 × 64 × 34 × 240` fMRI image. The corpus also contains real EDF+, BrainVision, EEGLAB, and NWB fixtures as explicit pending-format cases. See [docs/real-datasets.md](docs/real-datasets.md) for sources, licenses, citations, privacy notes, and hashes.
+
+## Development
+
+```bash
+npm run typecheck  # strict TypeScript
+npm test           # parser, MPR session, RPC, DSH integration
+npx playwright install chromium # one-time browser setup
+npm run test:design # browser checks for the three approved design prototypes
+npm run test:real  # real NIfTI smoke tests
+npm run build      # Host ESM and DSH Web client bundles
+npm run check      # typecheck + unit tests + build
+```
+
+The DSH browser integration check covers direct opening, a real 4D dataset, linked position changes, time movement, and the selected-voxel plot. Design exploration and reproducible browser checks live under `design-demos/`; `verify-dsh-integration.cjs` accepts a running DSH URL and an absolute NIfTI path.
+
+## Safety and limits
+
+- File access is read-only and goes through DSH `ctx.fs`.
+- The RPC is registered with loopback authority.
+- The Host defaults to a 256 MiB file limit and two cached open datasets.
+- Slice size defaults to 4,194,304 pixels; time-series transfer defaults to 1,024 samples.
+- The browser receives three normalized 2D frames and a bounded time series, not the full volume.
 - Header-derived dimensions, offsets, and multiplications are checked as safe integers.
-- Parsing supports `AbortSignal` cancellation.
-- The browser receives one normalized grayscale slice, never the complete volume.
-- Because the current DSH filesystem interface has no byte-range read, the Host reads the full file within the configured size limit.
+- Reads and view requests support cancellation; stale UI responses are discarded.
+- DSH currently has no filesystem byte-range read, so the Host reads each accepted file in full.
 
 ## Roadmap
 
-1. `.nii.gz`, NIfTI-2, qform/sform reorientation, and interactive slice sessions.
-2. BIDS dataset relationships, JSON/TSV tables, and event timelines.
-3. EDF/EDF+ and BrainVision multichannel waveforms and markers.
-4. EEGLAB `.set/.fdt` support.
+1. `.nii.gz`, NIfTI-2, and qform/sform anatomical reorientation.
+2. Window/level controls, overlays, colormaps, and keyboard navigation.
+3. BIDS relationships, JSON/TSV tables, and event timelines.
+4. EDF/EDF+, BrainVision, and EEGLAB waveform viewers.
 5. Optional Python worker for NWB, MNE FIF, CIFTI, and GIFTI.
 
 ## License
 
-NeuroPreviewer is released under the [MIT License](LICENSE). Real test datasets are not redistributed with the source code and remain subject to their original licenses, citation requirements, and privacy terms.
+NeuroPreviewer is released under the [MIT License](LICENSE). Real test datasets remain subject to their original licenses, citation requirements, and privacy terms.

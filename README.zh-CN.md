@@ -6,39 +6,37 @@
 
 [English](README.md) | **简体中文**
 
-> 直接在 DeepSeek Harness 中预览神经科学数据。
+> 为 DeepSeek Harness 构建的交互式神经科学数据查看器。
 
-**NeuroPreviewer 是一个面向 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness) 的神经科学数据预览插件。** 它以 DSH bundle 和 Web client extension 的形式安装，并非独立查看器。模型通过只读的 `neuro_preview` 工具检查本地数据，DSH Web 客户端则使用专用卡片呈现预览结果。
+**NeuroPreviewer 是一个 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness) 插件，不是独立桌面查看器。** 用户可以直接从 DSH 侧边栏打开 MPR 工作台，也可以从 `neuro_preview` 工具结果进入。Host 负责读取本地数据，浏览器只接收受限的预览切片和采样时间序列。
 
 `@brainpilot/dsh-neuro-previewer` · [GitHub](https://github.com/NeuroAIHub/NeuroPreviewer) · [MIT License](LICENSE)
 
-> **兼容性：** `0.1.0` 版本面向 DeepSeek Harness `0.1.0-rc.6`。DSH 仍处于开发者预览阶段，后续可能引入不兼容的接口变更。
+![NeuroPreviewer 交互式 MPR 工作台](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-interactive-workbench.png)
 
-## 为什么选择 NeuroPreviewer？
-
-NeuroPreviewer 让 DSH 智能体能够安全、轻量地了解神经科学文件的基本信息，而不必把完整数据集发送到浏览器。Host 插件通过 DSH 文件系统接口读取并校验文件，在明确的资源上限内生成二维预览，再返回结构化元数据和适合 Web 显示的灰度图像。
-
-当前版本优先保证可复现性、明确的资源限制，以及 Web 客户端不可用时仍然有效的文本输出。
+> **版本状态：** npm `0.1.0` 是稳定的静态预览版本；交互工作台目前位于 `main`，版本为 `0.2.0-alpha.1`，需要从源码安装。两者均面向 DSH `0.1.0-rc.6`；DSH 仍处于开发者预览阶段，后续可能存在破坏性变更。
 
 ## 当前能力
 
 | 能力 | 状态 | 说明 |
 | --- | --- | --- |
-| NIfTI-1 单文件 `.nii` | ✅ | 校验 `sizeof_hdr=348` 与 `n+1` magic |
-| 3D MRI | ✅ | axial、coronal、sagittal 三个切面 |
-| 4D fMRI | ✅ | 可指定零基 `volume` |
+| DSH 直接入口 | ✅ alpha | 从侧边栏打开，不需要先发起对话 |
+| 联动 MPR | ✅ alpha | axial、coronal、sagittal 三个切面共享同一体素光标 |
+| 空间交互 | ✅ alpha | 点击任一切面，或移动 X/Y/Z 滑块 |
+| 4D 时间交互 | ✅ alpha | 拖动、逐帧或播放 fMRI volume |
+| 体素时间序列 | ✅ alpha | 绘制所选体素跨 volume 的变化，传输数量受限 |
+| 对话入口 | ✅ | `neuro_preview` 返回预览卡片和工作台入口 |
+| NIfTI-1 `.nii` | ✅ | 3D MRI 与 4D fMRI；支持大小端 |
 | 数值类型 | ✅ | `uint8/int8/int16/uint16/int32/uint32/float32/float64` |
-| 强度处理 | ✅ | 应用 `scl_slope`/`scl_inter`，使用 2%–98% 分位窗 |
-| 大小端 | ✅ | little-endian 与 big-endian |
-| DSH Web 预览卡片 | ✅ | Canvas 灰度图、维度、类型、切面和强度范围 |
-| `.nii.gz`、NIfTI-2 | 计划中 | 已准备真实样本，尚未实现解压与解析 |
-| BIDS 元数据、CSV/TSV | 计划中 | 已准备真实 BIDS sidecar 和 events 文件 |
-| EDF/EDF+、BrainVision、EEGLAB | 计划中 | 已准备真实 EEG/PSG 样本，Adapter 待实现 |
-| NWB、FIF | 计划中 | 计划通过可选 Python Worker 支持 |
+| 强度处理 | ✅ | 应用 `scl_slope`/`scl_inter` 和 2%–98% 分位窗 |
+| `.nii.gz`、NIfTI-2 | 计划中 | 已有真实 fixture，解压与解析待实现 |
+| BIDS JSON/TSV | 计划中 | sidecar、events 与数据集关系 |
+| EDF/EDF+、BrainVision、EEGLAB | 计划中 | 多通道波形与 marker Adapter |
+| NWB、FIF、CIFTI、GIFTI | 计划中 | 计划通过可选 Python Worker 支持 |
 
-当前渲染遵循 voxel 存储顺序，尚未根据 qform/sform 重新排列解剖方向。NeuroPreviewer 适用于科研数据检查和开发测试，不能用于临床判读或诊断。
+图像目前遵循 voxel 存储顺序，尚未应用 qform/sform 解剖方向重排。NeuroPreviewer 仅适用于科研数据检查和开发测试，不能用于临床判读或诊断。
 
-## 快速开始
+## 安装
 
 ### 环境要求
 
@@ -46,7 +44,7 @@ NeuroPreviewer 让 DSH 智能体能够安全、轻量地了解神经科学文件
 - npm 与 pnpm
 - DeepSeek Harness `0.1.0-rc.6`
 
-### 从 npm 安装
+### npm 稳定版（静态预览）
 
 ```bash
 dsh plugin --profile web add @brainpilot/dsh-neuro-previewer@0.1.0
@@ -54,7 +52,7 @@ dsh --profile web --dump-config
 dsh --profile web
 ```
 
-### 从源码构建并安装
+### 从源码安装交互 alpha
 
 ```bash
 git clone https://github.com/NeuroAIHub/NeuroPreviewer.git
@@ -67,7 +65,7 @@ dsh --profile web --dump-config
 dsh --profile web
 ```
 
-导出的配置中应当包含：
+导出的配置应包含：
 
 ```yaml
 - id: neuro-previewer
@@ -75,11 +73,21 @@ dsh --profile web
   config:
     maxFileBytes: 268435456
     maxSlicePixels: 4194304
+    maxOpenDatasets: 2
+    maxTimeSeriesPoints: 1024
 ```
 
-## 使用 `neuro_preview`
+## 使用交互工作台
 
-工具调用示例：
+1. 启动 DSH Web profile。
+2. 点击 DSH 侧边栏中的 **NeuroPreviewer**。
+3. 输入 DSH Host 可访问的 `.nii` 绝对路径。
+4. 点击任一解剖切面，或移动 X/Y/Z，改变共享体素位置。
+5. 对 4D 数据拖动或播放时间控件；所选体素的时间序列会同步更新。
+
+对话触发 `neuro_preview` 后，也可以从结果卡片进入同一个查看器。对话只是可选入口，不是交互预览的前置条件。
+
+`neuro_preview` 输入示例：
 
 ```json
 {
@@ -90,106 +98,80 @@ dsh --profile web
 }
 ```
 
-| 参数 | 必需 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `path` | 是 | — | DSH 文件系统可访问的 `.nii` 文件路径 |
-| `axis` | 否 | `axial` | `axial`、`coronal` 或 `sagittal` |
-| `index` | 否 | 中央切片 | 零基切片序号 |
-| `volume` | 否 | `0` | 4D 数据的零基 volume 序号 |
-
-即使没有 Web extension，工具仍会返回文本摘要，包括维度、体素大小、数据类型、切片位置、强度范围和警告。
-
-## 使用真实神经科学数据测试
-
-真实数据会下载到已被 Git 忽略的 `test-data/real/`，不会进入代码仓库或 npm 包。所有下载文件都会通过 [scripts/real-data.sha256](scripts/real-data.sha256) 校验。
-
-下载完整语料库（约 190 MiB）并执行真实数据冒烟测试：
-
-```bash
-npm run data:download
-npm run test:real
-```
-
-也可以按格式分别下载：
-
-```bash
-bash scripts/download-real-data.sh nifti
-bash scripts/download-real-data.sh edf
-bash scripts/download-real-data.sh brainvision
-bash scripts/download-real-data.sh eeglab
-bash scripts/download-real-data.sh nwb
-```
-
-| 数据源 | 领域与格式 | 本地测试数据 | 当前支持 |
-| --- | --- | --- | --- |
-| OpenNeuro `ds000005` | 人类结构 MRI、任务 fMRI；BIDS/NIfTI | 3D T1、240-volume BOLD、JSON/TSV、压缩与解压 NIfTI | ✅ 两个 `.nii` 文件 |
-| PhysioNet Sleep-EDF Expanded | 人类睡眠 EEG/PSG；EDF+ | PSG 与 Hypnogram | Adapter 待实现 |
-| PhysioNet EEGMMIDB | 人类运动想象 EEG；EDF+ | 64 通道基线记录 | Adapter 待实现 |
-| OpenNeuro `ds007629` | 人类自然阅读 EEG；BrainVision | `.vhdr/.vmrk/.eeg` 三件套 | Adapter 待实现 |
-| EEGLAB sample data | 人类 EEG；`.set/.fdt` 与 BrainVision | EEGLAB 数据对与小型 BrainVision 回归样本 | Adapter 待实现 |
-| DANDI `000006` | 小鼠 ALM 细胞外电生理；NWB | 两个小型 `.nwb` session | Python Worker 待实现 |
-
-当前冒烟测试会解析真实的 `160 × 192 × 192` 3D T1 图像，以及真实的 `64 × 64 × 34 × 240` 4D fMRI 图像。尚未支持的格式会作为明确的负向语料保留，确保未来 Adapter 面对的是真实文件，而不是掩盖兼容问题的合成替代品。
-
-固定下载地址、许可证、引用、隐私说明和逐文件哈希见 [docs/real-datasets.md](docs/real-datasets.md)。即使人类数据已经公开或去标识化，也不得尝试重新识别数据主体。
-
-## 开发与验证
-
-```bash
-npm run typecheck  # TypeScript 严格类型检查
-npm test           # 合成 fixture 单元测试与契约测试
-npm run test:real  # 使用本地真实 NIfTI 数据进行冒烟测试
-npm run build      # 构建 Host ESM 与 DSH Web client bundle
-npm run check      # typecheck + unit tests + build
-```
-
-合成测试覆盖 header 校验、截断输入、little/big endian、三个切面、4D volume、slope/intercept、非法 index、切片像素上限、提前取消、DSH Tool 注册、文件系统 Adapter、模型文本输出和 Client presentation metadata。
+没有 Web extension 时，工具仍会返回维度、体素大小、数据类型、位置、强度范围和警告的文本摘要。
 
 ## 架构
 
 ```text
-DSH neuro_preview Tool
-        │
-        ▼
-NeuroPreview Interface
-        │
-        ├── NIfTI Adapter（当前）
-        ├── EDF / BrainVision Adapter（计划）
-        └── Python Worker Adapter（计划：NWB/FIF/EEGLAB）
-        │
-        ▼
-统一 PreviewDocument
-        │
-        ▼
-DSH Web NeuroPreviewRow + Canvas
+DSH 侧边栏 ───────────────┐
+                          ├──► Web MPR 工作台
+neuro_preview 结果卡片 ───┘          │
+                                     │ loopback RPC：open / view / close
+                                     ▼
+                            InteractiveNeuroPreview
+                              Host 受限数据缓存
+                                     │
+                                     ▼
+                           NIfTI 解析器与切片器
+                                     │
+                     三张二维切片 + 采样体素时间序列
+                                     ▼
+                                   浏览器
 ```
 
-格式中立的核心模块与 DSH 集成相互分离：
+静态工具路径与交互 session 共用同一个格式中立 NIfTI 核心，主要模块边界如下：
 
-- `src/core/preview.ts`：定义 `NeuroPreview` 接口。
-- `src/core/nifti.ts`：检测、解析 NIfTI-1 文件并提取切片。
-- `src/dsh/source.ts`：将 DSH `ctx.fs` 转换为受限的 `BinarySource`。
-- `src/index.ts`：注册 Host 工具及面向模型的输出。
-- `src/client.tsx`：实现 DSH Web 工具卡片。
+- `src/core/nifti.ts`：校验 NIfTI-1，提取切片、体素值和时间序列。
+- `src/core/interactive.ts`：管理受限数据集，并生成同步 MPR 视图。
+- `src/dsh/source.ts`：将 DSH `ctx.fs` 适配为有大小上限的二进制数据源。
+- `src/dsh/rpc.ts`：暴露仅限 loopback 的 `open`、`view`、`close` 操作。
+- `src/index.ts`：注册 Host 工具、配置和 RPC 服务。
+- `src/client/workbench.tsx`：实现 DSH MPR 工作台和直接交互控件。
+
+## 使用真实神经科学数据测试
+
+真实数据下载到 Git 忽略的 `test-data/real/`，不会进入仓库或 npm 包。下载文件通过 [scripts/real-data.sha256](scripts/real-data.sha256) 校验。
+
+```bash
+npm run data:download  # 完整语料约 190 MiB
+npm run test:real
+```
+
+真实数据冒烟测试会解析 OpenNeuro 的 `160 × 192 × 192` T1 图像和 `64 × 64 × 34 × 240` fMRI 图像。语料库还包含真实 EDF+、BrainVision、EEGLAB 与 NWB 文件，作为待支持格式的明确测试样本。来源、许可证、引用、隐私说明和哈希见 [docs/real-datasets.md](docs/real-datasets.md)。
+
+## 开发与验证
+
+```bash
+npm run typecheck  # TypeScript 严格检查
+npm test           # 解析器、MPR session、RPC、DSH 集成
+npx playwright install chromium # 首次运行时安装测试浏览器
+npm run test:design # 三个设计原型的浏览器交互检查
+npm run test:real  # 真实 NIfTI 冒烟测试
+npm run build      # Host ESM 与 DSH Web client bundle
+npm run check      # typecheck + unit tests + build
+```
+
+DSH 浏览器集成检查覆盖直接打开、真实 4D 数据、联动空间位置、时间移动和所选体素曲线。设计探索与可复现浏览器检查位于 `design-demos/`；`verify-dsh-integration.cjs` 接受一个运行中的 DSH URL 和一个 NIfTI 绝对路径。
 
 ## 安全与资源限制
 
-- 仅通过 DSH `ctx.fs` 进行只读文件访问。
-- 默认单文件上限为 256 MiB。
-- 默认单切片上限为 4,194,304 像素。
-- 所有由 header 派生的维度、偏移和乘法都会进行安全整数检查。
-- 解析支持通过 `AbortSignal` 取消。
-- 浏览器仅接收一张归一化灰度切片，不会接收完整体数据。
-- DSH 当前文件系统接口尚不支持 byte-range read，因此 Host 会在配置的文件上限内读取完整文件。
+- 仅通过 DSH `ctx.fs` 只读访问文件。
+- RPC 以 loopback authority 注册。
+- Host 默认单文件上限 256 MiB，最多缓存两个打开的数据集。
+- 单切片默认上限为 4,194,304 像素；时间序列默认最多传输 1,024 个样本。
+- 浏览器接收三张归一化二维切片和受限时间序列，不接收完整体数据。
+- 所有 header 派生的维度、偏移与乘法都会进行安全整数检查。
+- 读取和视图请求支持取消；UI 会丢弃过期响应。
+- DSH 当前文件系统没有 byte-range read，因此 Host 会完整读取符合限制的文件。
 
 ## 路线图
 
-1. `.nii.gz`、NIfTI-2、qform/sform 解剖方向重排和交互式切片 session。
-2. BIDS 数据集关系、JSON/TSV 表格和 events 时间线。
-3. EDF/EDF+ 与 BrainVision 多通道波形和 marker。
-4. EEGLAB `.set/.fdt` 支持。
-5. 面向 NWB、MNE FIF、CIFTI 和 GIFTI 的可选 Python Worker。
+1. `.nii.gz`、NIfTI-2 与 qform/sform 解剖方向重排。
+2. 窗宽窗位、overlay、色图与键盘导航。
+3. BIDS 数据集关系、JSON/TSV 表格和 events 时间线。
+4. EDF/EDF+、BrainVision 与 EEGLAB 波形查看器。
+5. 面向 NWB、MNE FIF、CIFTI、GIFTI 的可选 Python Worker。
 
 ## 许可
 
-NeuroPreviewer 使用 [MIT License](LICENSE) 开源。真实测试数据不随源代码再分发，并继续受各自原始许可证、引用要求和隐私条款约束。
+NeuroPreviewer 使用 [MIT License](LICENSE) 开源。真实测试数据仍受各自原始许可证、引用要求和隐私条款约束。

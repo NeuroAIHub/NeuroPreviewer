@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NeuroPreviewer — Gallery Focus</title>
+  <!--
+  Assumptions: the user enters from a DSH sidebar action, selects a local file,
+  then spends most of the session inspecting one large plane. This direction
+  prioritises visual focus over simultaneous comparison. Real OpenNeuro slices
+  are used; slider movement is simulated with a shared crosshair and five real
+  fMRI volumes. Form comes from the dark-room act of inspecting one image.
+  -->
+  <style>
+    :root{color-scheme:dark;--bg:#070707;--panel:#101010;--line:#2b2b2b;--text:#f2f2ef;--muted:#8d8d89;--cyan:#55d6d0;--amber:#e4a853}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+    button,input{font:inherit} button{color:inherit}.app{height:100vh;display:grid;grid-template-columns:72px 1fr 286px;grid-template-rows:64px 1fr 128px}
+    .rail{grid-row:1/4;border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:18px}.wordmark{writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:.14em;font-size:12px}.rail button{width:40px;height:40px;border:1px solid var(--line);background:#111;border-radius:50%;cursor:pointer}.rail .open{margin-top:auto;background:var(--text);color:#090909;border-color:var(--text);font-size:20px}
+    header{grid-column:2/4;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 22px}.file strong{font-weight:560}.file span{display:block;color:var(--muted);font:12px ui-monospace,SFMono-Regular,monospace;margin-top:3px}.status{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px}.dot{width:7px;height:7px;border-radius:50%;background:var(--cyan)}
+    main{position:relative;display:grid;place-items:center;min-width:0;min-height:0;background:radial-gradient(circle at center,#161616 0,#090909 58%,#070707 100%)}
+    .viewer{height:min(68vh,620px);aspect-ratio:1/1;position:relative;display:grid;place-items:center}.viewer img{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;filter:contrast(1.08)}
+    .cross-x,.cross-y{position:absolute;background:var(--cyan);opacity:.75;pointer-events:none}.cross-x{height:1px;left:8%;right:8%;top:52%}.cross-y{width:1px;top:8%;bottom:8%;left:50%}.coord{position:absolute;left:12px;bottom:8px;color:var(--cyan);font:12px ui-monospace,SFMono-Regular,monospace;text-shadow:0 1px 4px #000}
+    .axis-tabs{position:absolute;top:18px;left:20px;display:flex;background:#0b0b0bdd;border:1px solid var(--line);padding:3px}.axis-tabs button{border:0;background:transparent;padding:7px 12px;color:var(--muted);cursor:pointer}.axis-tabs button.active{background:#272727;color:#fff}
+    aside{border-left:1px solid var(--line);padding:22px 20px;overflow:auto;background:#0b0b0b}.eyebrow{font:11px ui-monospace,SFMono-Regular,monospace;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}.control{margin:0 0 22px}.control label{display:flex;justify-content:space-between;margin-bottom:9px}.control output{font:12px ui-monospace,SFMono-Regular,monospace;color:var(--cyan)}input[type=range]{width:100%;accent-color:var(--cyan)}.facts{border-top:1px solid var(--line);padding-top:18px;display:grid;grid-template-columns:1fr auto;gap:10px;color:var(--muted)}.facts b{font:12px ui-monospace,SFMono-Regular,monospace;color:var(--text);font-weight:500}.warning{margin-top:22px;padding:12px;border:1px solid #604b2b;color:#d9bd8f;font-size:12px}
+    .timeline{grid-column:2/4;border-top:1px solid var(--line);display:grid;grid-template-columns:140px 1fr 120px;align-items:center;gap:18px;padding:14px 22px;background:#0b0b0b}.transport{display:flex;align-items:center;gap:8px}.transport button{width:34px;height:34px;border:1px solid var(--line);background:#141414;cursor:pointer}.transport .play{border-radius:50%;background:var(--amber);color:#111;border-color:var(--amber)}.time-track{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.frame{height:76px;border:1px solid var(--line);background:#111;padding:5px;cursor:pointer;position:relative}.frame img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}.frame.active{border-color:var(--amber)}.frame span{position:absolute;right:5px;bottom:3px;background:#000b;padding:1px 4px;color:#ddd;font:10px ui-monospace,monospace}.time-read{text-align:right}.time-read strong{display:block;color:var(--amber);font:18px ui-monospace,monospace}.time-read small{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="rail"><div class="wordmark">NEUROPREVIEWER</div><button title="Reset view">⌖</button><button class="open" title="Open file">＋</button></nav>
+    <header><div class="file"><strong>sub-01_task-mixedgamblestask_run-01_bold.nii</strong><span>64 × 64 × 34 × 240 · INT16 · 3.4 mm³</span></div><div class="status"><span class="dot"></span> Local · read only</div></header>
+    <main>
+      <div class="axis-tabs"><button class="active" data-axis="axial">Axial</button><button data-axis="coronal">Coronal</button><button data-axis="sagittal">Sagittal</button></div>
+      <div class="viewer"><img id="mainImage" src="assets/fmri-t120.png" alt="Real fMRI slice"><span class="cross-x"></span><span class="cross-y"></span><div class="coord" id="coord">X 32 · Y 32 · Z 17 · T 120</div></div>
+    </main>
+    <aside>
+      <div class="eyebrow">Spatial position</div>
+      <div class="control"><label>X <output id="xOut">32 / 63</output></label><input id="x" type="range" min="0" max="63" value="32"></div>
+      <div class="control"><label>Y <output id="yOut">32 / 63</output></label><input id="y" type="range" min="0" max="63" value="32"></div>
+      <div class="control"><label>Z <output id="zOut">17 / 33</output></label><input id="z" type="range" min="0" max="33" value="17"></div>
+      <div class="eyebrow">Display</div>
+      <div class="control"><label>Window <output>0 — 914</output></label><input type="range" min="0" max="100" value="72"></div>
+      <div class="facts"><span>Plane</span><b id="plane">AXIAL</b><span>Volume</span><b id="volumeFact">120 / 239</b><span>Cursor value</span><b>642</b><span>Orientation</span><b>VOXEL</b></div>
+      <div class="warning">Research preview. Anatomical reorientation is not applied yet.</div>
+    </aside>
+    <section class="timeline">
+      <div class="transport"><button id="prev">←</button><button class="play" id="play">▶</button><button id="next">→</button></div>
+      <div class="time-track" id="frames"></div>
+      <div class="time-read"><strong id="timeRead">T 120</strong><small>2.00 s</small></div>
+    </section>
+  </div>
+  <script>
+    const volumes=[0,60,120,180,239]; let volume=120; let timer; let axis='axial';
+    const frames=document.querySelector('#frames'); const image=document.querySelector('#mainImage');
+    const axisImages={axial:'assets/fmri-t120.png',coronal:'assets/fmri-coronal.png',sagittal:'assets/fmri-sagittal.png'};
+    function renderFrames(){frames.innerHTML=volumes.map(v=>`<button class="frame ${v===volume?'active':''}" data-v="${v}"><img src="assets/fmri-t${String(v).padStart(3,'0')}.png" alt="Volume ${v}"><span>${v}</span></button>`).join('');frames.querySelectorAll('button').forEach(b=>b.onclick=()=>setVolume(+b.dataset.v))}
+    function setVolume(v){volume=v; if(axis==='axial') image.src=`assets/fmri-t${String(v).padStart(3,'0')}.png`;document.querySelector('#timeRead').textContent=`T ${v}`;document.querySelector('#volumeFact').textContent=`${v} / 239`;renderFrames();syncCoord()}
+    function syncCoord(){const vals=['x','y','z'].map(id=>document.querySelector('#'+id).value);document.querySelector('#coord').textContent=`X ${vals[0]} · Y ${vals[1]} · Z ${vals[2]} · T ${volume}`}
+    ['x','y','z'].forEach(id=>document.querySelector('#'+id).oninput=e=>{document.querySelector('#'+id+'Out').textContent=`${e.target.value} / ${e.target.max}`;syncCoord();const p=(+e.target.value/+e.target.max)*84+8;if(id==='x')document.querySelector('.cross-y').style.left=p+'%';if(id==='y')document.querySelector('.cross-x').style.top=p+'%'});
+    document.querySelectorAll('[data-axis]').forEach(b=>b.onclick=()=>{axis=b.dataset.axis;document.querySelectorAll('[data-axis]').forEach(x=>x.classList.toggle('active',x===b));image.src=axisImages[axis];document.querySelector('#plane').textContent=axis.toUpperCase()});
+    document.querySelector('#prev').onclick=()=>setVolume(volumes[Math.max(0,volumes.indexOf(volume)-1)]);document.querySelector('#next').onclick=()=>setVolume(volumes[Math.min(volumes.length-1,volumes.indexOf(volume)+1)]);
+    document.querySelector('#play').onclick=e=>{if(timer){clearInterval(timer);timer=null;e.target.textContent='▶'}else{e.target.textContent='Ⅱ';timer=setInterval(()=>setVolume(volumes[(volumes.indexOf(volume)+1)%volumes.length]),700)}};renderFrames();
+  </script>
+</body>
+</html>

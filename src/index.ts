@@ -4,11 +4,14 @@ import type {} from '@deepseek-ai/dsh-fs'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { InferValue } from '@deepseek-ai/dsh-tools'
 import { NeuroPreviewError } from './core/nifti.js'
+import { InteractiveNeuroPreview } from './core/interactive.js'
 import { NeuroPreview } from './core/preview.js'
 import type { CorePreviewDocument, PreviewDocument, SliceAxis } from './core/types.js'
 import { DshBinarySource } from './dsh/source.js'
+import { registerNeuroPreviewRpc } from './dsh/rpc.js'
 
 export * from './core/nifti.js'
+export * from './core/interactive.js'
 export * from './core/preview.js'
 export type * from './core/types.js'
 
@@ -18,6 +21,8 @@ export const inject = ['tools', 'fs']
 export interface Config {
   readonly maxFileBytes?: number
   readonly maxSlicePixels?: number
+  readonly maxOpenDatasets?: number
+  readonly maxTimeSeriesPoints?: number
 }
 
 const DEFAULT_MAX_FILE_BYTES = 256 * 1024 * 1024
@@ -72,11 +77,20 @@ function summary(value: PreviewDocument): string {
 export function apply(ctx: Context, config: Config = {}): void {
   const maxFileBytes = positiveInteger(config.maxFileBytes, DEFAULT_MAX_FILE_BYTES, 'maxFileBytes')
   const maxSlicePixels = positiveInteger(config.maxSlicePixels, DEFAULT_MAX_SLICE_PIXELS, 'maxSlicePixels')
-  const preview = new NeuroPreview(new DshBinarySource(ctx, maxFileBytes), { maxSlicePixels })
+  const maxOpenDatasets = positiveInteger(config.maxOpenDatasets, 2, 'maxOpenDatasets')
+  const maxTimeSeriesPoints = positiveInteger(config.maxTimeSeriesPoints, 1024, 'maxTimeSeriesPoints')
+  const source = new DshBinarySource(ctx, maxFileBytes)
+  const preview = new NeuroPreview(source, { maxSlicePixels })
+  const interactivePreview = new InteractiveNeuroPreview(source, {
+    maxSlicePixels,
+    maxOpenDatasets,
+    maxTimeSeriesPoints,
+  })
+  registerNeuroPreviewRpc(ctx, interactivePreview)
 
   ctx.tools.register(defineTool({
     name: 'neuro_preview',
-    description: 'Preview a neuroscience data file. The current alpha supports single-file NIfTI-1 .nii images.',
+    description: 'Open a neuroscience data preview. Supports interactive spatial and time navigation for single-file NIfTI-1 .nii images.',
     parameters: {
       path: { type: 'string', required: true, description: 'Path to the neuroscience data file.' },
       axis: {

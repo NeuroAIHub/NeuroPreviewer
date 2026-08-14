@@ -10,6 +10,7 @@ describe('DSH plugin Adapter', () => {
     const bytes = niftiInt16Fixture()
     const target = { targetKey: 'fixture', displayPath: '/workspace/fixture.nii' }
     const ctx = {
+      inject() {},
       tools: {
         register(definition: ToolDefinition) {
           tool = definition

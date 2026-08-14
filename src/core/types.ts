@@ -55,6 +55,47 @@ export interface PreviewDocument extends Omit<CorePreviewDocument, 'frame'> {
   readonly frame: WireImage2DFrame
 }
 
+export interface VoxelCursor {
+  readonly x: number
+  readonly y: number
+  readonly z: number
+  readonly volume: number
+}
+
+export interface VoxelTimeSeries {
+  readonly indices: readonly number[]
+  readonly values: readonly number[]
+  readonly min: number
+  readonly max: number
+}
+
+export interface InteractivePreviewView {
+  readonly cursor: VoxelCursor
+  readonly cursorValue: number
+  readonly frames: Readonly<Record<SliceAxis, Image2DFrame>>
+  readonly timeSeries: VoxelTimeSeries
+}
+
+export interface WireInteractivePreviewView extends Omit<InteractivePreviewView, 'frames'> {
+  readonly frames: Readonly<Record<SliceAxis, WireImage2DFrame>>
+}
+
+export interface InteractiveDataset {
+  readonly datasetId: string
+  readonly path: string
+  readonly metadata: NiftiMetadata
+  readonly view: InteractivePreviewView
+  readonly warnings: readonly string[]
+}
+
+export interface WireInteractiveDataset extends Omit<InteractiveDataset, 'view'> {
+  readonly view: WireInteractivePreviewView
+}
+
+export interface InteractiveViewRequest extends VoxelCursor {
+  readonly datasetId: string
+}
+
 export interface BinarySource {
   read(path: string, signal?: AbortSignal): Promise<Uint8Array>
 }

@@ -3,6 +3,8 @@ import type {
   NiftiMetadata,
   PreviewRequest,
   SliceAxis,
+  VoxelCursor,
+  VoxelTimeSeries,
 } from './types.js'
 
 const NIFTI1_HEADER_BYTES = 348
@@ -158,6 +160,64 @@ function requestedInteger(value: number | undefined, fallback: number, name: str
   return result
 }
 
+function readVoxel(
+  bytes: Uint8Array,
+  header: ParsedHeader,
+  x: number,
+  y: number,
+  z: number,
+  volume: number,
+): number {
+  const [xDim = 1, yDim = 1, zDim = 1] = header.dims
+  const voxelIndex = (((volume * zDim + z) * yDim + y) * xDim + x)
+  const byteOffset = header.voxOffset + voxelIndex * header.datatype.bytes
+  if (!Number.isSafeInteger(byteOffset) || byteOffset + header.datatype.bytes > bytes.byteLength) {
+    throw new NeuroPreviewError('NIfTI voxel data is truncated', 'TRUNCATED_FILE')
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const raw = header.datatype.read(view, byteOffset, header.metadata.littleEndian)
+  return raw * header.metadata.sclSlope + header.metadata.sclIntercept
+}
+
+function sampleIndices(length: number, maxPoints: number): number[] {
+  if (!Number.isSafeInteger(maxPoints) || maxPoints < 2) {
+    throw new NeuroPreviewError('maxPoints must be an integer of at least 2', 'INVALID_REQUEST')
+  }
+  if (length <= maxPoints) return Array.from({ length }, (_, index) => index)
+  return Array.from({ length: maxPoints }, (_, index) => Math.round(index * (length - 1) / (maxPoints - 1)))
+}
+
+export function inspectNiftiTimeSeries(
+  bytes: Uint8Array,
+  cursor: Omit<VoxelCursor, 'volume'>,
+  maxPoints = 1024,
+): VoxelTimeSeries {
+  const header = parseHeader(bytes)
+  const [xDim = 1, yDim = 1, zDim = 1, tDim = 1] = header.dims
+  const x = requestedInteger(cursor.x, 0, 'x', xDim)
+  const y = requestedInteger(cursor.y, 0, 'y', yDim)
+  const z = requestedInteger(cursor.z, 0, 'z', zDim)
+  const indices = sampleIndices(tDim, maxPoints)
+  const values = indices.map(volume => readVoxel(bytes, header, x, y, z, volume))
+  const finite = values.filter(Number.isFinite)
+  return {
+    indices,
+    values,
+    min: finite.length === 0 ? 0 : Math.min(...finite),
+    max: finite.length === 0 ? 0 : Math.max(...finite),
+  }
+}
+
+export function inspectNiftiVoxel(bytes: Uint8Array, cursor: VoxelCursor): number {
+  const header = parseHeader(bytes)
+  const [xDim = 1, yDim = 1, zDim = 1, tDim = 1] = header.dims
+  const x = requestedInteger(cursor.x, 0, 'x', xDim)
+  const y = requestedInteger(cursor.y, 0, 'y', yDim)
+  const z = requestedInteger(cursor.z, 0, 'z', zDim)
+  const volume = requestedInteger(cursor.volume, 0, 'volume', tDim)
+  return readVoxel(bytes, header, x, y, z, volume)
+}
+
 function percentile(sorted: readonly number[], fraction: number): number {
   if (sorted.length === 0) return 0
   const index = Math.min(sorted.length - 1, Math.max(0, Math.floor((sorted.length - 1) * fraction)))
@@ -210,7 +270,7 @@ export function inspectNifti(
   maxSlicePixels = 4_194_304,
 ): CorePreviewDocument {
   const header = parseHeader(bytes)
-  const [xDim = 1, yDim = 1, zDim = 1, tDim = 1] = header.dims
+  const [, , , tDim = 1] = header.dims
   const axis = request.axis ?? 'axial'
   const shape = geometry(axis, header.dims)
   const pixelCount = checkedProduct([shape.width, shape.height], 'Slice dimensions')
@@ -222,7 +282,6 @@ export function inspectNifti(
   }
   const index = requestedInteger(request.index, Math.floor(shape.axisLength / 2), 'index', shape.axisLength)
   const volume = requestedInteger(request.volume, 0, 'volume', tDim)
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   const values = new Array<number>(pixelCount)
 
   let cursor = 0
@@ -233,13 +292,7 @@ export function inspectNifti(
         : axis === 'coronal'
           ? [column, index, row]
           : [index, column, row]
-      const voxelIndex = (((volume * zDim + z) * yDim + y) * xDim + x)
-      const byteOffset = header.voxOffset + voxelIndex * header.datatype.bytes
-      if (!Number.isSafeInteger(byteOffset) || byteOffset + header.datatype.bytes > bytes.byteLength) {
-        throw new NeuroPreviewError('NIfTI voxel data is truncated', 'TRUNCATED_FILE')
-      }
-      const raw = header.datatype.read(view, byteOffset, header.metadata.littleEndian)
-      values[cursor] = raw * header.metadata.sclSlope + header.metadata.sclIntercept
+      values[cursor] = readVoxel(bytes, header, x, y, z, volume)
       cursor += 1
     }
   }
