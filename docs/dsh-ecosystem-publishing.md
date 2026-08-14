@@ -36,7 +36,7 @@ manifest:
 
 ```json
 {
-  "name": "@neuroaihub/dsh-neuro-previewer",
+  "name": "@brainpilot/dsh-neuro-previewer",
   "version": "0.1.0",
   "type": "module",
   "main": "lib/index.js",
@@ -55,7 +55,7 @@ package names or exported subpaths, not source-checkout-relative paths:
 ```yaml
 - insert:
     - id: neuro-previewer
-      name: '@neuroaihub/dsh-neuro-previewer'
+      name: '@brainpilot/dsh-neuro-previewer'
 ```
 
 The official tutorial uses this same structure and explicitly includes both
@@ -146,7 +146,7 @@ namespace-ownership recommendation, not a Harness loader restriction.
 For an npm release:
 
 ```sh
-dsh plugin --profile neuro add @neuroaihub/dsh-neuro-previewer@0.1.0
+dsh plugin --profile neuro add @brainpilot/dsh-neuro-previewer@0.1.0
 dsh --profile neuro --dump-config
 dsh --profile neuro
 ```
@@ -166,8 +166,8 @@ dsh plugin --profile neuro add github:OWNER/REPO#COMMIT_SHA
 To update or remove:
 
 ```sh
-dsh plugin --profile neuro update @neuroaihub/dsh-neuro-previewer
-dsh plugin --profile neuro remove @neuroaihub/dsh-neuro-previewer
+dsh plugin --profile neuro update @brainpilot/dsh-neuro-previewer
+dsh plugin --profile neuro remove @brainpilot/dsh-neuro-previewer
 ```
 
 `dsh plugin` initializes a missing custom profile with
@@ -192,7 +192,7 @@ that exact key into the profile's `pnpm-workspace.yaml`, then retries:
 
 ```yaml
 allowBuilds:
-  '@neuroaihub/dsh-neuro-previewer': true
+  '@brainpilot/dsh-neuro-previewer': true
 ```
 
 This is permission to execute dependency code on the user's machine outside
@@ -255,7 +255,7 @@ submission, review, signing, ranking, or compatibility-certification process.
 The current [`package.json`](../package.json) already has the essential DSH
 shape:
 
-- `@neuroaihub/dsh-neuro-previewer` is a sensible third-party scoped name and is
+- `@brainpilot/dsh-neuro-previewer` is a sensible third-party scoped name and is
   used verbatim by the root Loader row in [`cordis.patch.yml`](../cordis.patch.yml).
 - `dsh.bundle.patch` names the shipped patch, while `dsh.client.platform` is
   `web` and `exports["./client"]` points at `lib/client.js`.
@@ -265,12 +265,11 @@ shape:
   conservative for the current developer preview. Re-test and release a new
   plugin version before widening those ranges.
 
-Four publication items remain:
+Release notes for this package:
 
-1. npm/GitHub provenance fields (`repository`, `homepage`, and `bugs`) now
-   point to the public NeuroAIHub repository. The package is not present in
-   the official npm registry as of 2026-08-14 (the package metadata endpoint
-   returns `404`).
+1. npm/GitHub source fields (`repository`, `homepage`, and `bugs`) point to the
+   public NeuroAIHub repository. The npm distribution identity is
+   `@brainpilot/dsh-neuro-previewer`.
 2. Decide whether GitHub source installation is supported. `lib/` is not
    tracked by Git and there is no `prepare` script, so the documented
    `github:OWNER/REPO#SHA` route will not build this checkout. Either add a
@@ -280,17 +279,17 @@ Four publication items remain:
    `^22.19.0 || >=24.0.0`. The published CLI currently omits an `engines`
    field, so this comes from the repository's development prerequisites, not
    npm enforcement.
-4. On publication, add the GitHub `dsh-plugin` topic and document a pinned
-   install command such as:
+4. Add the GitHub `dsh-plugin` topic for ecosystem discovery. Version `0.1.0`
+   has the following pinned install command:
 
    ```sh
-   dsh plugin --profile web add @neuroaihub/dsh-neuro-previewer@0.1.0-alpha.1
+   dsh plugin --profile web add @brainpilot/dsh-neuro-previewer@0.1.0
    dsh --profile web --dump-config
    ```
 
 ([Git build requirement](https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/user/develop/basic/publish.md#L153-L178),
 [documented Node floor](https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/development.md#L7-L13),
-[`@neuroaihub/dsh-neuro-previewer` npm metadata endpoint](https://registry.npmjs.org/@neuroaihub%2fdsh-neuro-previewer))
+[`@brainpilot/dsh-neuro-previewer` npm metadata endpoint](https://registry.npmjs.org/@brainpilot%2fdsh-neuro-previewer))
 
 ## Ambiguities and limits of the official sources
 

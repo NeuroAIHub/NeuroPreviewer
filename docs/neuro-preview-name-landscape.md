@@ -25,7 +25,7 @@ and equivalent GitLab and Docker Hub searches were empty.
 engines can easily collapse “preview,” “view,” and “viewer,” especially when
 the products all concern brain data. The selected name is **NeuroPreviewer**,
 qualified in public copy as **NeuroPreviewer for DSH**, with package identity
-`@neuroaihub/dsh-neuro-previewer`. The DSH qualifier and controlled npm scope
+`@brainpilot/dsh-neuro-previewer`. The DSH qualifier and controlled npm scope
 reduce ambiguity, but do not remove the nearby NeuroViewer/NeuroView risks. A
 real trademark clearance is still required before relying on this choice.
 
@@ -37,7 +37,7 @@ hyphen; it does not mean a substring such as `something-neuro-preview-demo`.
 | Namespace checked | Query | Result on 2026-08-14 |
 | --- | --- | --- |
 | npm | [`neuropreview`](https://registry.npmjs.org/neuropreview), [`neuro-preview`](https://registry.npmjs.org/neuro-preview), [`dsh-neuro-preview`](https://registry.npmjs.org/dsh-neuro-preview) | Each official registry endpoint returned `404 Not Found`. |
-| npm, scoped | [`@neuroaihub/dsh-neuro-previewer`](https://registry.npmjs.org/@neuroaihub%2Fdsh-neuro-previewer) | Official registry endpoint returned `404 Not Found`. This says nothing about ownership or publish rights for the `@neuroaihub` scope. |
+| npm, scoped | [`@brainpilot/dsh-neuro-previewer`](https://registry.npmjs.org/@brainpilot%2Fdsh-neuro-previewer) | Official registry endpoint returned `404 Not Found`. This says nothing about ownership or publish rights for the `@brainpilot` scope. |
 | PyPI | [`neuropreview`](https://pypi.org/pypi/neuropreview/json), [`neuro-preview`](https://pypi.org/pypi/neuro-preview/json), [`dsh-neuro-preview`](https://pypi.org/pypi/dsh-neuro-preview/json) | Each official JSON endpoint returned `404 Not Found`. |
 | Anaconda.org | [`neuropreview`](https://api.anaconda.org/search?name=neuropreview), [`neuro-preview`](https://api.anaconda.org/search?name=neuro-preview) | Official search API returned an empty array for each query. |
 | GitHub repositories | [`NeuroPreview in:name`](https://api.github.com/search/repositories?q=NeuroPreview%20in%3Aname) | Official Search API returned `total_count: 0`. |
@@ -128,8 +128,8 @@ general-purpose viewer competing feature-for-feature with NiiVue or neurosift.
 
 1. Use **NeuroPreviewer for DSH** in headings, release pages, screenshots, and
    prose. Avoid presenting bare **Neuro Preview** as the primary brand.
-2. Use `@neuroaihub/dsh-neuro-previewer` as the package identity if the
-   `@neuroaihub` npm scope is controlled. The scope and `dsh-` qualifier do
+2. Use `@brainpilot/dsh-neuro-previewer` as the package identity if the
+   `@brainpilot` npm scope is controlled. The scope and `dsh-` qualifier do
    useful disambiguation that the display name lacks.
 3. Treat `neuro_preview` as a machine-facing tool identifier, not proof of an
    ownable brand. In search metadata, pair it with “NeuroAIHub,” “DeepSeek

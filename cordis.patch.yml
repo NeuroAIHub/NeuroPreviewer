@@ -1,6 +1,6 @@
 - insert:
     - id: neuro-previewer
-      name: '@neuroaihub/dsh-neuro-previewer'
+      name: '@brainpilot/dsh-neuro-previewer'
       config:
         maxFileBytes: 268435456
         maxSlicePixels: 4194304
