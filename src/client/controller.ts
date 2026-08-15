@@ -1,18 +1,17 @@
 import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
 import type {
-  InteractiveViewRequest,
+  AnyInteractiveViewRequest,
   NeuroWorkspaceListing,
   NeuroWorkspaceSummary,
-  VoxelCursor,
+  WireAnyInteractivePreviewView,
   WireInteractiveDataset,
-  WireInteractivePreviewView,
 } from '../core/types.js'
 
 export interface ViewerSnapshot {
   readonly visible: boolean
   readonly loading: boolean
   readonly dataset?: WireInteractiveDataset
-  readonly view?: WireInteractivePreviewView
+  readonly view?: WireAnyInteractivePreviewView
   readonly workspaces?: readonly NeuroWorkspaceSummary[]
   readonly listing?: NeuroWorkspaceListing
   readonly error?: string
@@ -128,17 +127,17 @@ export class NeuroViewerController {
     }
   }
 
-  async view(cursor: VoxelCursor): Promise<void> {
+  async view(cursor: Omit<AnyInteractiveViewRequest, 'datasetId'>): Promise<void> {
     const dataset = this.#snapshot.dataset
     if (dataset === undefined) return
     const { signal, generation } = this.#beginRequest()
     const { error: _error, ...snapshot } = this.#snapshot
     this.#set({ ...snapshot, loading: true })
-    const payload: InteractiveViewRequest = { datasetId: dataset.datasetId, ...cursor }
+    const payload: AnyInteractiveViewRequest = { datasetId: dataset.datasetId, ...cursor } as AnyInteractiveViewRequest
     try {
       const result = await this.rpc.call('/neuro-preview', 'view', payload, signal)
       if (generation !== this.#generation) return
-      const view = resultValue<WireInteractivePreviewView>(result)
+      const view = resultValue<WireAnyInteractivePreviewView>(result)
       this.#set({ ...this.#snapshot, loading: false, view })
     } catch (error) {
       if (signal.aborted || generation !== this.#generation) return

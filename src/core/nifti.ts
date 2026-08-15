@@ -301,10 +301,6 @@ export function inspectNifti(
   const warnings = [
     'Anatomical reorientation is not implemented yet; the preview follows voxel storage order.',
   ]
-  if (request.path.toLowerCase().endsWith('.nii.gz')) {
-    warnings.push('The current alpha does not decompress .nii.gz files.')
-  }
-
   return {
     kind: 'neuro-preview',
     format: 'nifti-1',

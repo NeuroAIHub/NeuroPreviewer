@@ -1,29 +1,51 @@
 import { randomUUID } from 'node:crypto'
+import { dirname, isAbsolute, relative, resolve } from 'node:path'
+import { gunzipSync } from 'node:zlib'
+import { parseBrainVisionHeader } from './brainvision.js'
+import { openEdf } from './edf.js'
+import { parseEeglabHeader } from './eeglab.js'
+import { openNwb } from './nwb.js'
 import { inspectNifti, inspectNiftiTimeSeries, inspectNiftiVoxel, NeuroPreviewError } from './nifti.js'
+import type { SignalAdapter } from './signal-adapter.js'
 import type {
+  AnyInteractiveDataset,
+  AnyInteractivePreviewView,
+  AnyInteractiveViewRequest,
   BinarySource,
-  InteractiveDataset,
   InteractivePreviewView,
   InteractiveViewRequest,
   NiftiMetadata,
   SliceAxis,
+  SignalPreviewView,
+  SignalViewRequest,
   VoxelCursor,
 } from './types.js'
 
 export interface InteractivePreviewOptions {
+  readonly maxFileBytes?: number
   readonly maxSlicePixels?: number
   readonly maxOpenDatasets?: number
   readonly maxTimeSeriesPoints?: number
   readonly createId?: () => string
 }
 
-interface OpenDatasetRecord {
+interface OpenVolumeRecord {
+  readonly kind: 'volume'
   readonly datasetId: string
   readonly path: string
   readonly bytes: Uint8Array
   readonly metadata: NiftiMetadata
   readonly warnings: readonly string[]
 }
+
+interface OpenSignalRecord {
+  readonly kind: 'signals'
+  readonly datasetId: string
+  readonly path: string
+  readonly adapter: SignalAdapter
+}
+
+type OpenDatasetRecord = OpenVolumeRecord | OpenSignalRecord
 
 function positiveInteger(value: number, name: string, minimum = 1): number {
   if (!Number.isSafeInteger(value) || value < minimum) {
@@ -42,6 +64,14 @@ function middleCursor(metadata: NiftiMetadata): VoxelCursor {
   }
 }
 
+function companionPath(headerPath: string, reference: string): string {
+  const base = dirname(headerPath)
+  const target = resolve(base, reference)
+  const inside = relative(base, target)
+  if (inside.startsWith('..') || isAbsolute(inside)) throw new NeuroPreviewError('Companion data path escapes the header directory', 'INVALID_REQUEST')
+  return target
+}
+
 /**
  * Host-side interactive preview Module. It owns bounded dataset caching and
  * returns one internally consistent MPR/time-series snapshot per view request.
@@ -49,6 +79,7 @@ function middleCursor(metadata: NiftiMetadata): VoxelCursor {
 export class InteractiveNeuroPreview {
   readonly #datasets = new Map<string, OpenDatasetRecord>()
   readonly #maxSlicePixels: number
+  readonly #maxFileBytes: number
   readonly #maxOpenDatasets: number
   readonly #maxTimeSeriesPoints: number
   readonly #createId: () => string
@@ -58,23 +89,62 @@ export class InteractiveNeuroPreview {
     options: InteractivePreviewOptions = {},
   ) {
     this.#maxSlicePixels = positiveInteger(options.maxSlicePixels ?? 4_194_304, 'maxSlicePixels')
+    this.#maxFileBytes = positiveInteger(options.maxFileBytes ?? 256 * 1024 * 1024, 'maxFileBytes')
     this.#maxOpenDatasets = positiveInteger(options.maxOpenDatasets ?? 2, 'maxOpenDatasets')
     this.#maxTimeSeriesPoints = positiveInteger(options.maxTimeSeriesPoints ?? 1024, 'maxTimeSeriesPoints', 2)
     this.#createId = options.createId ?? randomUUID
   }
 
-  async open(path: string, signal?: AbortSignal): Promise<InteractiveDataset> {
+  async open(path: string, signal?: AbortSignal): Promise<AnyInteractiveDataset> {
     if (signal?.aborted) throw signal.reason ?? new DOMException('Aborted', 'AbortError')
     if (path.trim().length === 0) throw new NeuroPreviewError('path must be a non-empty string', 'INVALID_REQUEST')
-    const bytes = await this.source.read(path, signal)
+    const fileBytes = await this.source.read(path, signal)
     if (signal?.aborted) throw signal.reason ?? new DOMException('Aborted', 'AbortError')
-
-    const initial = inspectNifti(bytes, { path }, this.#maxSlicePixels)
     const datasetId = this.#createId()
     if (datasetId.length === 0 || this.#datasets.has(datasetId)) {
       throw new Error('interactive dataset id factory returned an invalid or duplicate id')
     }
-    const record: OpenDatasetRecord = {
+    const lower = path.toLowerCase()
+    if (lower.endsWith('.edf')) {
+      const adapter = openEdf(fileBytes)
+      const record: OpenSignalRecord = { kind: 'signals', datasetId, path, adapter }
+      this.#datasets.set(datasetId, record)
+      this.#evictOverflow()
+      const windowSamples = Math.min(adapter.metadata.sampleCount, Math.max(1, Math.round(adapter.metadata.sampleRate * 10)))
+      return { kind: 'signals', datasetId, path, metadata: adapter.metadata, warnings: adapter.warnings, view: adapter.view({ startSample: 0, windowSamples, channelStart: 0, channelCount: Math.min(8, adapter.metadata.channelCount), maxPoints: this.#maxTimeSeriesPoints }) }
+    }
+    if (lower.endsWith('.vhdr')) {
+      const header = parseBrainVisionHeader(fileBytes)
+      const data = await this.source.read(companionPath(path, header.dataFile), signal)
+      const adapter = header.open(data)
+      const record: OpenSignalRecord = { kind: 'signals', datasetId, path, adapter }
+      this.#datasets.set(datasetId, record)
+      this.#evictOverflow()
+      const windowSamples = Math.min(adapter.metadata.sampleCount, Math.max(1, Math.round(adapter.metadata.sampleRate * 10)))
+      return { kind: 'signals', datasetId, path, metadata: adapter.metadata, warnings: adapter.warnings, view: adapter.view({ startSample: 0, windowSamples, channelStart: 0, channelCount: Math.min(8, adapter.metadata.channelCount), maxPoints: this.#maxTimeSeriesPoints }) }
+    }
+    if (lower.endsWith('.set')) {
+      const header = parseEeglabHeader(fileBytes)
+      const data = header.dataFile === undefined ? undefined : await this.source.read(companionPath(path, header.dataFile), signal)
+      const adapter = header.open(data)
+      const record: OpenSignalRecord = { kind: 'signals', datasetId, path, adapter }
+      this.#datasets.set(datasetId, record)
+      this.#evictOverflow()
+      const windowSamples = Math.min(adapter.metadata.sampleCount, Math.max(1, Math.round(adapter.metadata.sampleRate * 10)))
+      return { kind: 'signals', datasetId, path, metadata: adapter.metadata, warnings: adapter.warnings, view: adapter.view({ startSample: 0, windowSamples, channelStart: 0, channelCount: Math.min(8, adapter.metadata.channelCount), maxPoints: this.#maxTimeSeriesPoints }) }
+    }
+    if (lower.endsWith('.nwb')) {
+      const adapter = openNwb(fileBytes)
+      const record: OpenSignalRecord = { kind: 'signals', datasetId, path, adapter }
+      this.#datasets.set(datasetId, record)
+      this.#evictOverflow()
+      const windowSamples = Math.min(adapter.metadata.sampleCount, Math.max(1, Math.round(adapter.metadata.sampleRate * 10)))
+      return { kind: 'signals', datasetId, path, metadata: adapter.metadata, warnings: adapter.warnings, view: adapter.view({ startSample: 0, windowSamples, channelStart: 0, channelCount: Math.min(8, adapter.metadata.channelCount), maxPoints: this.#maxTimeSeriesPoints }) }
+    }
+    const bytes = lower.endsWith('.nii.gz') ? new Uint8Array(gunzipSync(fileBytes, { maxOutputLength: this.#maxFileBytes })) : fileBytes
+    const initial = inspectNifti(bytes, { path }, this.#maxSlicePixels)
+    const record: OpenVolumeRecord = {
+      kind: 'volume',
       datasetId,
       path,
       bytes,
@@ -84,6 +154,7 @@ export class InteractiveNeuroPreview {
     this.#datasets.set(datasetId, record)
     this.#evictOverflow()
     return {
+      kind: 'volume',
       datasetId,
       path,
       metadata: record.metadata,
@@ -92,13 +163,21 @@ export class InteractiveNeuroPreview {
     }
   }
 
-  view(request: InteractiveViewRequest): InteractivePreviewView {
+  view(request: InteractiveViewRequest): InteractivePreviewView
+  view(request: SignalViewRequest): SignalPreviewView
+  view(request: AnyInteractiveViewRequest): AnyInteractivePreviewView
+  view(request: AnyInteractiveViewRequest): AnyInteractivePreviewView {
     const record = this.#datasets.get(request.datasetId)
     if (record === undefined) {
       throw new NeuroPreviewError(`Interactive dataset is not open: ${request.datasetId}`, 'INVALID_REQUEST')
     }
     this.#datasets.delete(record.datasetId)
     this.#datasets.set(record.datasetId, record)
+    if (record.kind === 'signals') {
+      if (!('startSample' in request)) throw new NeuroPreviewError('Signal preview requires a signal window request', 'INVALID_REQUEST')
+      return record.adapter.view({ ...request, maxPoints: this.#maxTimeSeriesPoints })
+    }
+    if (!('x' in request)) throw new NeuroPreviewError('Volume preview requires a voxel cursor request', 'INVALID_REQUEST')
     return this.#render(record, request)
   }
 
@@ -110,7 +189,7 @@ export class InteractiveNeuroPreview {
     return this.#datasets.size
   }
 
-  #render(record: OpenDatasetRecord, cursor: VoxelCursor): InteractivePreviewView {
+  #render(record: OpenVolumeRecord, cursor: VoxelCursor): InteractivePreviewView {
     const frame = (axis: SliceAxis, index: number) => inspectNifti(record.bytes, {
       path: record.path,
       axis,

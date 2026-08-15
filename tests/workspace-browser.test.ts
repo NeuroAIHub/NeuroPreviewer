@@ -26,6 +26,11 @@ describe('WorkspaceFileBrowser', () => {
           return [
             { name: 'sub-01', type: 'directory', target: target('/study/sub-01') },
             { name: 'brain.nii', type: 'file', size: 42, target: target('/study/brain.nii') },
+            { name: 'compressed.nii.gz', type: 'file', target: target('/study/compressed.nii.gz') },
+            { name: 'recording.edf', type: 'file', target: target('/study/recording.edf') },
+            { name: 'recording.vhdr', type: 'file', target: target('/study/recording.vhdr') },
+            { name: 'session.set', type: 'file', target: target('/study/session.set') },
+            { name: 'units.nwb', type: 'file', target: target('/study/units.nwb') },
             { name: 'events.tsv', type: 'file', target: target('/study/events.tsv') },
             { name: '.cache', type: 'directory', target: target('/study/.cache') },
             { name: 'escape', type: 'directory', target: target('/outside') },
@@ -42,6 +47,11 @@ describe('WorkspaceFileBrowser', () => {
       entries: [
         { name: 'sub-01', path: '/study/sub-01', type: 'directory' },
         { name: 'brain.nii', path: '/study/brain.nii', type: 'file', size: 42 },
+        { name: 'compressed.nii.gz', path: '/study/compressed.nii.gz', type: 'file' },
+        { name: 'recording.edf', path: '/study/recording.edf', type: 'file' },
+        { name: 'recording.vhdr', path: '/study/recording.vhdr', type: 'file' },
+        { name: 'session.set', path: '/study/session.set', type: 'file' },
+        { name: 'units.nwb', path: '/study/units.nwb', type: 'file' },
       ],
     })
   })

@@ -12,9 +12,9 @@
 
 `@brainpilot/dsh-neuro-previewer` · [GitHub](https://github.com/NeuroAIHub/NeuroPreviewer) · [MIT License](LICENSE)
 
-![NeuroPreviewer 交互式 MPR 工作台](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-interactive-workbench.png)
+![NeuroPreviewer 多通道信号工作台](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-signal-workbench.png)
 
-> **版本状态：** npm `0.1.0` 是稳定的静态预览版本；交互工作台目前位于 `main`，版本为 `0.2.0-alpha.4`，需要从源码安装。两者均面向 DSH `0.1.0-rc.6`；DSH 仍处于开发者预览阶段，后续可能存在破坏性变更。
+> **版本状态：** npm `0.1.0` 是稳定的静态预览版本；多格式工作台目前位于 `main`，版本为 `0.2.0-alpha.5`，需要从源码安装。两者均面向 DSH `0.1.0-rc.6`；DSH 仍处于开发者预览阶段，后续可能存在破坏性变更。
 
 ## 当前能力
 
@@ -27,14 +27,18 @@
 | 空间交互 | ✅ alpha | 点击任一切面，或移动 X/Y/Z 滑块 |
 | 4D 时间交互 | ✅ alpha | 拖动、逐帧或播放 fMRI volume |
 | 体素时间序列 | ✅ alpha | 绘制所选体素跨 volume 的变化，传输数量受限 |
+| 多通道信号工作台 | ✅ alpha | 八条堆叠波形、可移动时间窗和通道翻页 |
 | 对话入口 | ✅ | `neuro_preview` 返回预览卡片和工作台入口 |
-| NIfTI-1 `.nii` | ✅ | 3D MRI 与 4D fMRI；支持大小端 |
+| NIfTI-1 `.nii`、`.nii.gz` | ✅ | 3D MRI 与 4D fMRI；支持大小端及直接 gzip 解压 |
+| EDF / EDF+ `.edf` | ✅ alpha | 带物理标定的 EEG/PSG 多通道波形，并对齐不同采样率 |
+| BrainVision `.vhdr + .eeg` | ✅ alpha | multiplexed float32/int16/uint16；自动解析配套数据文件 |
+| EEGLAB `.set + .fdt` | ✅ alpha | MATLAB v5 header 与外置 float32 信号 |
+| NWB `.nwb` | ✅ 子集 | 将 `Units/spike_times` 显示为逐单元的分箱 spike-count 时间线 |
 | 数值类型 | ✅ | `uint8/int8/int16/uint16/int32/uint32/float32/float64` |
 | 强度处理 | ✅ | 应用 `scl_slope`/`scl_inter` 和 2%–98% 分位窗 |
-| `.nii.gz`、NIfTI-2 | 计划中 | 已有真实 fixture，解压与解析待实现 |
+| NIfTI-2 | 计划中 | header 与数据类型支持待实现 |
 | BIDS JSON/TSV | 计划中 | sidecar、events 与数据集关系 |
-| EDF/EDF+、BrainVision、EEGLAB | 计划中 | 多通道波形与 marker Adapter |
-| NWB、FIF、CIFTI、GIFTI | 计划中 | 计划通过可选 Python Worker 支持 |
+| DICOM、FIF、CIFTI、GIFTI | 计划中 | DICOM 需要序列组装，其余格式需要新 Adapter |
 
 图像目前遵循 voxel 存储顺序，尚未应用 qform/sform 解剖方向重排。NeuroPreviewer 仅适用于科研数据检查和开发测试，不能用于临床判读或诊断。
 
@@ -84,9 +88,9 @@ dsh --profile web
 1. 启动 DSH Web profile。
 2. 点击 DSH 侧边栏中的 **NeuroPreviewer**。
 3. 如果只注册了一个工作区，插件会直接进入其根目录；否则先选择工作区。
-4. 在树中展开文件夹，选中 `.nii` 文件后点击 **Open viewer**，也可以双击文件；父级目录始终保留。
-5. 点击任一解剖切面，或移动 X/Y/Z，改变共享体素位置。
-6. 对 4D 数据拖动或播放时间控件；所选体素的时间序列会同步更新。
+4. 在树中展开文件夹，选择支持的文件后点击 **Open viewer**，也可以双击；父级目录始终保留。
+5. 对体数据点击切面或移动 X/Y/Z，并用时间控件浏览 4D volume。
+6. 对信号数据移动时间窗、选择窗口时长，并翻阅不同通道组。
 
 小弹窗不会添加覆盖整个页面的遮罩，DSH 主界面仍然可见。选择器会隐藏点号开头的目录和不支持的文件；高级用户仍可通过 **Open another host path…** 输入绝对路径。
 
@@ -109,7 +113,7 @@ dsh --profile web
 
 ```text
 DSH 侧边栏 ───────────────┐
-                          ├──► Web MPR 工作台
+                          ├──► Web 体数据 / 信号工作台
 neuro_preview 结果卡片 ───┘          │
                                      │ loopback RPC：workspaces / browse / open / view / close
                                      ▼
@@ -117,22 +121,24 @@ neuro_preview 结果卡片 ───┘          │
                               Host 受限数据缓存
                                      │
                                      ▼
-                           NIfTI 解析器与切片器
-                                     │
-                     三张二维切片 + 采样体素时间序列
+                         格式 Adapter seam
+                      ┌──────────────┴──────────────┐
+                 NIfTI 体数据                 信号 Adapter
+                                      EDF · BrainVision · EEGLAB · NWB
                                      ▼
                                    浏览器
 ```
 
-静态工具路径与交互 session 共用同一个格式中立 NIfTI 核心，主要模块边界如下：
+交互格式位于统一的体数据/信号 seam 后面，主要模块边界如下：
 
 - `src/core/nifti.ts`：校验 NIfTI-1，提取切片、体素值和时间序列。
-- `src/core/interactive.ts`：管理受限数据集，并生成同步 MPR 视图。
+- `src/core/edf.ts`、`brainvision.ts`、`eeglab.ts`、`nwb.ts`：生成受限信号窗口的格式 Adapter。
+- `src/core/interactive.ts`：识别格式、管理受限数据集，并生成体数据或信号视图。
 - `src/dsh/source.ts`：将 DSH `ctx.fs` 适配为有大小上限的二进制数据源。
 - `src/dsh/rpc.ts`：暴露仅限 loopback 的 `open`、`view`、`close` 操作。
 - `src/dsh/workspace-browser.ts`：列出工作区根目录，并过滤越界目录与支持的数据文件。
 - `src/index.ts`：注册 Host 工具、配置和 RPC 服务。
-- `src/client/workbench.tsx`：实现 DSH MPR 工作台和直接交互控件。
+- `src/client/workbench.tsx`：实现 DSH MPR 与多通道信号工作台。
 
 ## 使用真实神经科学数据测试
 
@@ -143,7 +149,7 @@ npm run data:download  # 完整语料约 190 MiB
 npm run test:real
 ```
 
-真实数据冒烟测试会解析 OpenNeuro 的 `160 × 192 × 192` T1 图像和 `64 × 64 × 34 × 240` fMRI 图像。语料库还包含真实 EDF+、BrainVision、EEGLAB 与 NWB 文件，作为待支持格式的明确测试样本。来源、许可证、引用、隐私说明和哈希见 [docs/real-datasets.md](docs/real-datasets.md)。
+真实数据冒烟测试会解析 OpenNeuro T1/fMRI、PhysioNet EDF/EDF+、OpenNeuro BrainVision、EEGLAB `.set/.fdt` 和 DANDI NWB Units 表。来源、许可证、引用、隐私说明和哈希见 [docs/real-datasets.md](docs/real-datasets.md)。
 
 ## 开发与验证
 
@@ -152,7 +158,7 @@ npm run typecheck  # TypeScript 严格检查
 npm test           # 解析器、MPR session、RPC、DSH 集成
 npx playwright install chromium # 首次运行时安装测试浏览器
 npm run test:design # 三个设计原型的浏览器交互检查
-npm run test:real  # 真实 NIfTI 冒烟测试
+npm run test:real  # 真实体数据与信号格式冒烟测试
 npm run build      # Host ESM 与 DSH Web client bundle
 npm run check      # typecheck + unit tests + build
 ```
@@ -172,11 +178,11 @@ DSH 浏览器集成检查覆盖工作区逐级导航、直接打开、真实 4D 
 
 ## 路线图
 
-1. `.nii.gz`、NIfTI-2 与 qform/sform 解剖方向重排。
+1. NIfTI-2 与 qform/sform 解剖方向重排。
 2. 窗宽窗位、overlay、色图与键盘导航。
 3. BIDS 数据集关系、JSON/TSV 表格和 events 时间线。
-4. EDF/EDF+、BrainVision 与 EEGLAB 波形查看器。
-5. 面向 NWB、MNE FIF、CIFTI、GIFTI 的可选 Python Worker。
+4. EDF+/BrainVision marker、annotation 与事件叠加。
+5. 更广泛的 NWB acquisition group、DICOM 序列、MNE FIF、CIFTI 与 GIFTI。
 
 ## 许可
 

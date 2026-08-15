@@ -34,7 +34,7 @@ export class WorkspaceFileBrowser {
     options: WorkspaceFileBrowserOptions = {},
   ) {
     this.#maxEntries = positiveInteger(options.maxEntries ?? 2_000, 'maxEntries')
-    this.#supportedExtensions = (options.supportedExtensions ?? ['.nii'])
+    this.#supportedExtensions = (options.supportedExtensions ?? ['.nii', '.nii.gz', '.edf', '.vhdr', '.set', '.nwb'])
       .map(extension => extension.toLocaleLowerCase())
   }
 

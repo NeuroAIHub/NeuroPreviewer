@@ -12,9 +12,9 @@
 
 `@brainpilot/dsh-neuro-previewer` · [GitHub](https://github.com/NeuroAIHub/NeuroPreviewer) · [MIT License](LICENSE)
 
-![NeuroPreviewer interactive MPR workbench](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-interactive-workbench.png)
+![NeuroPreviewer signal workbench](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-signal-workbench.png)
 
-> **Release status:** npm `0.1.0` is the stable static-preview release. The interactive workbench is currently `0.2.0-alpha.4` on `main` and must be installed from source. Both target DSH `0.1.0-rc.6`; DSH is still a developer preview and may make breaking changes.
+> **Release status:** npm `0.1.0` is the stable static-preview release. The multi-format workbench is currently `0.2.0-alpha.5` on `main` and must be installed from source. Both target DSH `0.1.0-rc.6`; DSH is still a developer preview and may make breaking changes.
 
 ## What it does
 
@@ -27,14 +27,18 @@
 | Direct spatial navigation | ✅ alpha | Click a plane or move the X/Y/Z sliders |
 | 4D navigation | ✅ alpha | Scrub, step, or play fMRI volumes |
 | Voxel time series | ✅ alpha | Plots the selected voxel across all volumes, with bounded sampling |
+| Multichannel signal workbench | ✅ alpha | Eight stacked traces, movable time window, and channel paging |
 | Conversation entry | ✅ | `neuro_preview` returns a preview card with a button into the workbench |
-| NIfTI-1 `.nii` | ✅ | 3D MRI and 4D fMRI; little- and big-endian |
+| NIfTI-1 `.nii`, `.nii.gz` | ✅ | 3D MRI and 4D fMRI; little- and big-endian; direct gzip decompression |
+| EDF / EDF+ `.edf` | ✅ alpha | Calibrated multichannel EEG/PSG waveforms; mixed sample rates are aligned |
+| BrainVision `.vhdr + .eeg` | ✅ alpha | Multiplexed float32/int16/uint16 signals; companion data is resolved automatically |
+| EEGLAB `.set + .fdt` | ✅ alpha | MATLAB v5 headers and external float32 signal files |
+| NWB `.nwb` | ✅ subset | `Units/spike_times` rendered as per-unit binned spike-count timelines |
 | Numeric data | ✅ | `uint8/int8/int16/uint16/int32/uint32/float32/float64` |
 | Intensity processing | ✅ | Applies `scl_slope`/`scl_inter` and a 2%–98% percentile window |
-| `.nii.gz`, NIfTI-2 | Planned | Real fixtures exist; decompression/parsing is pending |
+| NIfTI-2 | Planned | Header and datatype support pending |
 | BIDS JSON/TSV | Planned | Sidecars, events, and dataset relationships |
-| EDF/EDF+, BrainVision, EEGLAB | Planned | Multichannel waveform and marker adapters |
-| NWB, FIF, CIFTI, GIFTI | Planned | Intended for an optional Python worker |
+| DICOM, FIF, CIFTI, GIFTI | Planned | DICOM needs series assembly; the others need additional adapters |
 
 Images currently follow voxel storage order; qform/sform reorientation is not yet applied. NeuroPreviewer is for research-data inspection and development, not clinical interpretation or diagnosis.
 
@@ -84,9 +88,9 @@ The dumped configuration should include:
 1. Start the DSH Web profile.
 2. Click **NeuroPreviewer** in the DSH sidebar.
 3. If one workspace is registered, its root opens immediately; otherwise choose a workspace.
-4. Expand folders in the tree, select a `.nii` file, and click **Open viewer** (or double-click the file). Parent folders stay visible.
-5. Click any anatomical plane or move X/Y/Z to change the shared voxel.
-6. For 4D data, scrub or play the time control; the selected-voxel plot updates with it.
+4. Expand folders, select a supported file, and click **Open viewer** (or double-click). Parent folders stay visible.
+5. For volume data, click a plane or move X/Y/Z; scrub 4D volumes with the time control.
+6. For signal data, move the time window, choose its duration, and page through channel groups.
 
 The compact popup leaves the DSH page visible and does not add a full-screen backdrop. It hides dot-prefixed entries and unsupported files. An advanced absolute-path field remains available under **Open another host path…**.
 
@@ -109,7 +113,7 @@ Without the Web extension, the tool still returns a text summary of dimensions, 
 
 ```text
 DSH sidebar ───────────────┐
-                          ├──► Web MPR workbench
+                          ├──► Web volume / signal workbench
 neuro_preview result card ┘          │
                                      │ loopback RPC: workspaces / browse / open / view / close
                                      ▼
@@ -117,22 +121,24 @@ neuro_preview result card ┘          │
                               bounded Host cache
                                      │
                                      ▼
-                           NIfTI parser and slicer
-                                     │
-                  three 2D frames + sampled voxel series
+                         Format Adapter seam
+                      ┌──────────────┴──────────────┐
+                 NIfTI volume                 signal adapters
+                                      EDF · BrainVision · EEGLAB · NWB
                                      ▼
                                   Browser
 ```
 
-The static tool path and interactive session share the same format-neutral NIfTI core. The important module boundaries are:
+Interactive formats sit behind one volume/signal seam. The important module boundaries are:
 
 - `src/core/nifti.ts`: validates NIfTI-1 and extracts slices, voxel values, and time series.
-- `src/core/interactive.ts`: owns bounded datasets and produces synchronized MPR views.
+- `src/core/edf.ts`, `brainvision.ts`, `eeglab.ts`, `nwb.ts`: format adapters that produce bounded signal windows.
+- `src/core/interactive.ts`: detects formats, owns bounded datasets, and produces volume or signal views.
 - `src/dsh/source.ts`: adapts DSH `ctx.fs` into a size-limited binary source.
 - `src/dsh/rpc.ts`: exposes loopback-only `open`, `view`, and `close` operations.
 - `src/dsh/workspace-browser.ts`: lists registered roots and filters contained directories and supported files.
 - `src/index.ts`: registers the Host tool, configuration, and RPC service.
-- `src/client/workbench.tsx`: renders the DSH MPR workbench and direct controls.
+- `src/client/workbench.tsx`: renders the DSH MPR and multichannel signal workbenches.
 
 ## Testing with real neuroscience data
 
@@ -143,7 +149,7 @@ npm run data:download  # complete corpus, approximately 190 MiB
 npm run test:real
 ```
 
-The real-data smoke test parses an OpenNeuro `160 × 192 × 192` T1 image and a `64 × 64 × 34 × 240` fMRI image. The corpus also contains real EDF+, BrainVision, EEGLAB, and NWB fixtures as explicit pending-format cases. See [docs/real-datasets.md](docs/real-datasets.md) for sources, licenses, citations, privacy notes, and hashes.
+The real-data smoke test parses OpenNeuro T1/fMRI volumes, PhysioNet EDF/EDF+, OpenNeuro BrainVision, an EEGLAB `.set/.fdt` pair, and DANDI NWB unit tables. See [docs/real-datasets.md](docs/real-datasets.md) for sources, licenses, citations, privacy notes, and hashes.
 
 ## Development
 
@@ -152,7 +158,7 @@ npm run typecheck  # strict TypeScript
 npm test           # parser, MPR session, RPC, DSH integration
 npx playwright install chromium # one-time browser setup
 npm run test:design # browser checks for the three approved design prototypes
-npm run test:real  # real NIfTI smoke tests
+npm run test:real  # real volume and signal format smoke tests
 npm run build      # Host ESM and DSH Web client bundles
 npm run check      # typecheck + unit tests + build
 ```
@@ -172,11 +178,11 @@ The DSH browser integration check covers workspace traversal, direct opening, a 
 
 ## Roadmap
 
-1. `.nii.gz`, NIfTI-2, and qform/sform anatomical reorientation.
+1. NIfTI-2 and qform/sform anatomical reorientation.
 2. Window/level controls, overlays, colormaps, and keyboard navigation.
 3. BIDS relationships, JSON/TSV tables, and event timelines.
-4. EDF/EDF+, BrainVision, and EEGLAB waveform viewers.
-5. Optional Python worker for NWB, MNE FIF, CIFTI, and GIFTI.
+4. EDF+/BrainVision markers, annotations, and event overlays.
+5. Broader NWB acquisition groups, DICOM series, MNE FIF, CIFTI, and GIFTI.
 
 ## License
 

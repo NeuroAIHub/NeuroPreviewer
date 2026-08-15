@@ -6,8 +6,9 @@ import { NeuroPreviewError } from '../core/nifti.js'
 import type { InteractiveNeuroPreview } from '../core/interactive.js'
 import type { WorkspaceFileBrowser } from './workspace-browser.js'
 import type {
+  AnyInteractivePreviewView,
+  AnyInteractiveViewRequest,
   InteractivePreviewView,
-  InteractiveViewRequest,
   VoxelCursor,
   WireImage2DFrame,
   WireInteractiveDataset,
@@ -21,7 +22,8 @@ function wireFrame(frame: InteractivePreviewView['frames']['axial']): WireImage2
   return { ...rest, pixelsBase64: Buffer.from(pixels).toString('base64') }
 }
 
-function wireView(view: InteractivePreviewView): WireInteractivePreviewView {
+function wireView(view: AnyInteractivePreviewView): WireInteractivePreviewView | AnyInteractivePreviewView {
+  if (!('frames' in view)) return view
   return {
     ...view,
     frames: {
@@ -68,7 +70,7 @@ function requiredString(payload: Record<string, unknown>, key: string): string {
   return value
 }
 
-function requiredInteger(payload: Record<string, unknown>, key: keyof VoxelCursor): number {
+function requiredInteger(payload: Record<string, unknown>, key: string): number {
   const value = payload[key]
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
     throw new NeuroPreviewError(`${key} must be a non-negative integer`, 'INVALID_REQUEST')
@@ -104,17 +106,28 @@ export function createNeuroPreviewRpcHandler(
       }
       if (endpoint === 'open') {
         const opened = await preview.open(requiredString(payload, 'path'), signal)
-        const value: WireInteractiveDataset = { ...opened, view: wireView(opened.view) }
+        const value: WireInteractiveDataset = opened.kind === 'signals'
+          ? opened
+          : { ...opened, view: wireView(opened.view) as WireInteractivePreviewView }
         return { ok: true, value }
       }
       if (endpoint === 'view') {
-        const request: InteractiveViewRequest = {
-          datasetId: requiredString(payload, 'datasetId'),
-          x: requiredInteger(payload, 'x'),
-          y: requiredInteger(payload, 'y'),
-          z: requiredInteger(payload, 'z'),
-          volume: requiredInteger(payload, 'volume'),
-        }
+        const datasetId = requiredString(payload, 'datasetId')
+        const request: AnyInteractiveViewRequest = payload.startSample === undefined
+          ? {
+              datasetId,
+              x: requiredInteger(payload, 'x'),
+              y: requiredInteger(payload, 'y'),
+              z: requiredInteger(payload, 'z'),
+              volume: requiredInteger(payload, 'volume'),
+            }
+          : {
+              datasetId,
+              startSample: requiredInteger(payload, 'startSample'),
+              windowSamples: requiredInteger(payload, 'windowSamples'),
+              channelStart: requiredInteger(payload, 'channelStart'),
+              channelCount: requiredInteger(payload, 'channelCount'),
+            }
         return { ok: true, value: wireView(preview.view(request)) }
       }
       if (endpoint === 'close') {

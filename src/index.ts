@@ -13,6 +13,11 @@ import { WorkspaceFileBrowser } from './dsh/workspace-browser.js'
 import type {} from '@deepseek-ai/dsh-workspace'
 
 export * from './core/nifti.js'
+export * from './core/edf.js'
+export * from './core/brainvision.js'
+export * from './core/eeglab.js'
+export * from './core/nwb.js'
+export type * from './core/signal-adapter.js'
 export * from './core/interactive.js'
 export * from './core/preview.js'
 export type * from './core/types.js'
@@ -82,8 +87,9 @@ export function apply(ctx: Context, config: Config = {}): void {
   const maxOpenDatasets = positiveInteger(config.maxOpenDatasets, 2, 'maxOpenDatasets')
   const maxTimeSeriesPoints = positiveInteger(config.maxTimeSeriesPoints, 1024, 'maxTimeSeriesPoints')
   const source = new DshBinarySource(ctx, maxFileBytes)
-  const preview = new NeuroPreview(source, { maxSlicePixels })
+  const preview = new NeuroPreview(source, { maxFileBytes, maxSlicePixels })
   const interactivePreview = new InteractiveNeuroPreview(source, {
+    maxFileBytes,
     maxSlicePixels,
     maxOpenDatasets,
     maxTimeSeriesPoints,
@@ -92,7 +98,7 @@ export function apply(ctx: Context, config: Config = {}): void {
 
   ctx.tools.register(defineTool({
     name: 'neuro_preview',
-    description: 'Open a neuroscience data preview. Supports interactive spatial and time navigation for single-file NIfTI-1 .nii images.',
+    description: 'Open a neuroscience data preview. The tool summarizes NIfTI-1 .nii/.nii.gz images; the DSH workbench also opens EDF, BrainVision, EEGLAB, and NWB signals.',
     parameters: {
       path: { type: 'string', required: true, description: 'Path to the neuroscience data file.' },
       axis: {

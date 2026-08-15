@@ -81,6 +81,7 @@ export interface WireInteractivePreviewView extends Omit<InteractivePreviewView,
 }
 
 export interface InteractiveDataset {
+  readonly kind: 'volume'
   readonly datasetId: string
   readonly path: string
   readonly metadata: NiftiMetadata
@@ -88,13 +89,73 @@ export interface InteractiveDataset {
   readonly warnings: readonly string[]
 }
 
-export interface WireInteractiveDataset extends Omit<InteractiveDataset, 'view'> {
-  readonly view: WireInteractivePreviewView
+export interface SignalChannelMetadata {
+  readonly label: string
+  readonly unit: string
+  readonly sampleRate: number
 }
+
+export interface SignalMetadata {
+  readonly format: 'edf' | 'edf+' | 'brainvision' | 'eeglab' | 'nwb'
+  readonly channelCount: number
+  readonly sampleRate: number
+  readonly sampleCount: number
+  readonly durationSeconds: number
+  readonly channels: readonly SignalChannelMetadata[]
+  readonly recording?: string | undefined
+  readonly patient?: string | undefined
+}
+
+export interface SignalTrace {
+  readonly channel: number
+  readonly label: string
+  readonly unit: string
+  readonly min: number
+  readonly max: number
+  readonly samples: readonly number[]
+}
+
+export interface SignalPreviewView {
+  readonly kind: 'signals'
+  readonly startSample: number
+  readonly windowSamples: number
+  readonly timeStart: number
+  readonly timeEnd: number
+  readonly traces: readonly SignalTrace[]
+}
+
+export interface SignalInteractiveDataset {
+  readonly kind: 'signals'
+  readonly datasetId: string
+  readonly path: string
+  readonly metadata: SignalMetadata
+  readonly view: SignalPreviewView
+  readonly warnings: readonly string[]
+}
+
+export type AnyInteractiveDataset = InteractiveDataset | SignalInteractiveDataset
+
+export type AnyInteractivePreviewView = InteractivePreviewView | SignalPreviewView
+
+export type WireAnyInteractivePreviewView = WireInteractivePreviewView | SignalPreviewView
+
+export type WireInteractiveDataset = Omit<InteractiveDataset, 'view'> & {
+  readonly view: WireInteractivePreviewView
+} | SignalInteractiveDataset
 
 export interface InteractiveViewRequest extends VoxelCursor {
   readonly datasetId: string
 }
+
+export interface SignalViewRequest {
+  readonly datasetId: string
+  readonly startSample: number
+  readonly windowSamples: number
+  readonly channelStart: number
+  readonly channelCount: number
+}
+
+export type AnyInteractiveViewRequest = InteractiveViewRequest | SignalViewRequest
 
 export interface NeuroWorkspaceSummary {
   readonly id: string

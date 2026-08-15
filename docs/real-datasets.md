@@ -9,13 +9,13 @@ unversioned object URL.
 
 | Format | Minimal test data | Download size | License | Works in the current plugin? |
 | --- | --- | ---: | --- | --- |
-| NIfTI-1 in BIDS | OpenNeuro `ds000005`, `sub-01_T1w.nii.gz` | 5,515,017 B compressed; 11,796,832 B as `.nii` | PDDL 1.0; attribution/community norms requested | **Yes, after external gzip decompression.** The plugin accepts the resulting single-file NIfTI-1 `.nii`, but not `.nii.gz` or BIDS as a dataset. |
-| EDF+ EEG | PhysioNet EEG Motor Movement/Imagery, `S001R01.edf` | 1,275,936 B (1.22 MiB) | ODC Attribution 1.0 | **No.** EDF/EDF+ is not implemented. |
-| BrainVision EEG | OpenNeuro `ds007629`, subject 10014, ReMind run 1 | 43,190,543 B (41.19 MiB) for `.eeg` + `.vhdr` + `.vmrk` | CC0 1.0 | **No.** BrainVision and linked multi-file inputs are not implemented. |
-| NWB | DANDI `000006`, mouse session `20170316` | 609,568 B (0.58 MiB) | CC BY 4.0 | **No.** NWB is not implemented; the roadmap proposes an optional Python worker. |
+| NIfTI-1 in BIDS | OpenNeuro `ds000005`, `sub-01_T1w.nii.gz` | 5,515,017 B compressed; 11,796,832 B as `.nii` | PDDL 1.0; attribution/community norms requested | **Yes.** Both `.nii` and `.nii.gz` open directly; BIDS relationships are not interpreted yet. |
+| EDF+ EEG | PhysioNet EEG Motor Movement/Imagery, `S001R01.edf` | 1,275,936 B (1.22 MiB) | ODC Attribution 1.0 | **Yes.** Calibrated multichannel waveforms and mixed sample rates are supported; annotations are detected but not rendered. |
+| BrainVision EEG | OpenNeuro `ds007629`, subject 10014, ReMind run 1 | 43,190,543 B (41.19 MiB) for `.eeg` + `.vhdr` + `.vmrk` | CC0 1.0 | **Yes.** Open the `.vhdr`; its relative `.eeg` companion is resolved automatically. Marker rendering is pending. |
+| NWB | DANDI `000006`, mouse session `20170316` | 609,568 B (0.58 MiB) | CC BY 4.0 | **Yes, subset.** `Units/spike_times` is rendered as per-unit binned spike counts; other groups are not visualized yet. |
 
 The default host file limit is 256 MiB, so every individual file here is below
-that limit. Format support, rather than size, blocks the last three rows.
+that limit.
 
 ## 1. NIfTI/BIDS: OpenNeuro mixed-gambles T1w
 
@@ -61,8 +61,8 @@ explicit participant consent and ethical authorization for publication; that
 policy is not proof that this particular file is anonymous. Do not attempt
 re-identification. See OpenNeuro's official [upload rules](https://docs.openneuro.org/user_guide.html#uploading-your-dataset).
 
-Current-plugin note: pass `sub-01_T1w.nii`, not the `.nii.gz`. BIDS sidecars and
-directory semantics are ignored, and anatomical reorientation is not yet
+Current-plugin note: `.nii` and `.nii.gz` both work. BIDS sidecars and directory
+semantics are ignored, and anatomical reorientation is not yet
 implemented, so the preview follows voxel storage order.
 
 ## 2. EDF+: PhysioNet EEG Motor Movement/Imagery
@@ -107,8 +107,9 @@ page does not make a blanket anonymity claim. Treat it as de-identified or
 pseudonymized research data, not as proof of irreversible anonymization, and do
 not attempt re-identification.
 
-Current-plugin note: expected to fail as unsupported today; use this file to
-drive a future EDF/EDF+ adapter and annotation-channel tests.
+Current-plugin note: this file drives the real EDF+ waveform smoke test. The
+annotation channel is detected and excluded from numeric traces; annotation
+events are not rendered yet.
 
 ## 3. BrainVision: OpenNeuro ROAMM run 1
 
@@ -146,9 +147,9 @@ status. That combination is sensitive and can increase linkage risk. Keep test
 fixtures access-controlled as appropriate and never describe the data as
 anonymous.
 
-Current-plugin note: unsupported. A future adapter must resolve the header's
-relative data/marker references safely and count the aggregate triplet size,
-not treat `.vhdr` as a standalone signal file.
+Current-plugin note: open the `.vhdr`. The plugin resolves its relative `.eeg`
+reference and previews multiplexed float32/int16/uint16 data. The `.vmrk`
+reference is preserved by the fixture but marker overlays are not implemented.
 
 ## 4. NWB: DANDI mouse ALM session
 
@@ -186,8 +187,9 @@ Privacy: the asset metadata identifies the subject as a house mouse
 (`NCBITaxon:10090`), not a person, so human participant privacy is not at issue.
 Normal attribution and research-integrity obligations still apply.
 
-Current-plugin note: unsupported. Keep the file for a future NWB/HDF5 metadata
-tree or Python-worker test; do not route it through the NIfTI parser.
+Current-plugin note: the pure-JavaScript NWB adapter reads the Units ragged
+`spike_times` table and renders binned counts per unit. General acquisition,
+processing, image, and table browsing remains future work.
 
 ## Fixture policy
 
