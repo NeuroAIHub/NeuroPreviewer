@@ -14,7 +14,7 @@
 
 ![NeuroPreviewer 交互式 MPR 工作台](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-interactive-workbench.png)
 
-> **版本状态：** npm `0.1.0` 是稳定的静态预览版本；交互工作台目前位于 `main`，版本为 `0.2.0-alpha.3`，需要从源码安装。两者均面向 DSH `0.1.0-rc.6`；DSH 仍处于开发者预览阶段，后续可能存在破坏性变更。
+> **版本状态：** npm `0.1.0` 是稳定的静态预览版本；交互工作台目前位于 `main`，版本为 `0.2.0-alpha.4`，需要从源码安装。两者均面向 DSH `0.1.0-rc.6`；DSH 仍处于开发者预览阶段，后续可能存在破坏性变更。
 
 ## 当前能力
 
@@ -22,6 +22,7 @@
 | --- | --- | --- |
 | DSH 直接入口 | ✅ alpha | 位于侧栏 New Session 下方、Workspaces 上方 |
 | 工作区文件树 | ✅ alpha | 非遮罩小弹窗；文件夹原位展开并保留完整上级层级 |
+| DSH 主题集成 | ✅ alpha | 使用 DSH 语义色、边框、字体、悬停状态与阴影 |
 | 联动 MPR | ✅ alpha | axial、coronal、sagittal 三个切面共享同一体素光标 |
 | 空间交互 | ✅ alpha | 点击任一切面，或移动 X/Y/Z 滑块 |
 | 4D 时间交互 | ✅ alpha | 拖动、逐帧或播放 fMRI volume |

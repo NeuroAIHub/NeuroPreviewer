@@ -14,7 +14,7 @@
 
 ![NeuroPreviewer interactive MPR workbench](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-interactive-workbench.png)
 
-> **Release status:** npm `0.1.0` is the stable static-preview release. The interactive workbench is currently `0.2.0-alpha.3` on `main` and must be installed from source. Both target DSH `0.1.0-rc.6`; DSH is still a developer preview and may make breaking changes.
+> **Release status:** npm `0.1.0` is the stable static-preview release. The interactive workbench is currently `0.2.0-alpha.4` on `main` and must be installed from source. Both target DSH `0.1.0-rc.6`; DSH is still a developer preview and may make breaking changes.
 
 ## What it does
 
@@ -22,6 +22,7 @@
 | --- | --- | --- |
 | Direct DSH viewer entry | ✅ alpha | Sits below New Session and above Workspaces in the sidebar |
 | Workspace file tree | ✅ alpha | Compact non-blocking popup; folders expand in place and preserve all ancestors |
+| DSH theme integration | ✅ alpha | Uses DSH semantic colors, borders, typography, hover states, and shadows |
 | Linked MPR views | ✅ alpha | Axial, coronal, and sagittal canvases share one voxel cursor |
 | Direct spatial navigation | ✅ alpha | Click a plane or move the X/Y/Z sliders |
 | 4D navigation | ✅ alpha | Scrub, step, or play fMRI volumes |

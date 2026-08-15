@@ -28,6 +28,21 @@ async function main() {
     await page.screenshot({ path: 'design-demos/screenshots/dsh-after-trigger.png' })
     const pickerBox = await page.getByRole('dialog', { name: 'Choose neuroscience data from workspace' }).boundingBox()
     if (pickerBox && pickerBox.width > 700) throw new Error('workspace picker should remain a compact popup')
+    const theme = await page.getByRole('dialog', { name: 'Choose neuroscience data from workspace' }).evaluate(element => {
+      const style = getComputedStyle(element)
+      return {
+        background: style.backgroundColor,
+        expectedBackground: style.getPropertyValue('--dsw-alias-bg-layer-2').trim(),
+        color: style.color,
+        expectedColor: style.getPropertyValue('--dsw-alias-label-primary').trim(),
+      }
+    })
+    if (theme.expectedBackground && theme.background !== theme.expectedBackground) {
+      throw new Error(`workspace picker background does not follow DSH theme: ${theme.background}`)
+    }
+    if (theme.expectedColor && theme.color !== theme.expectedColor) {
+      throw new Error(`workspace picker text does not follow DSH theme: ${theme.color}`)
+    }
     const listedLabel = await page.locator('.np-picker-path').textContent().catch(() => null)
     const listedPath = listedLabel?.split(' · ').at(-1)
     if (listedPath && (datasetPath === listedPath || datasetPath.startsWith(`${listedPath}/`))) {
