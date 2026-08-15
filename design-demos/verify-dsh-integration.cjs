@@ -2,6 +2,8 @@ const { chromium } = require('playwright')
 
 const baseURL = process.argv[2] ?? 'http://127.0.0.1:3080'
 const datasetPath = process.argv[3]
+const screenshotPath = process.argv[4] ?? 'design-demos/screenshots/dsh-interactive-workbench.png'
+const pickerScreenshotPath = process.argv[5]
 if (!datasetPath) throw new Error('usage: node verify-dsh-integration.cjs URL DATASET_PATH')
 
 async function main() {
@@ -43,6 +45,7 @@ async function main() {
     if (theme.expectedColor && theme.color !== theme.expectedColor) {
       throw new Error(`workspace picker text does not follow DSH theme: ${theme.color}`)
     }
+    if (pickerScreenshotPath) await page.screenshot({ path: pickerScreenshotPath })
     const listedLabel = await page.locator('.np-picker-path').textContent().catch(() => null)
     const listedPath = listedLabel?.split(' · ').at(-1)
     if (listedPath && (datasetPath === listedPath || datasetPath.startsWith(`${listedPath}/`))) {
@@ -104,7 +107,7 @@ async function main() {
       element.dispatchEvent(new Event('change', { bubbles: true }))
     })
     await page.waitForTimeout(800)
-    await page.screenshot({ path: 'design-demos/screenshots/dsh-interactive-workbench.png' })
+    await page.screenshot({ path: screenshotPath })
     if (!await page.getByText('T 120', { exact: true }).isVisible()) throw new Error('time control did not move to volume 120')
     if (errors.length > 0) throw new Error(`browser errors: ${errors.join('; ')}`)
     process.stdout.write('PASS DSH sidebar entry, workspace tree popup, and interactive MPR workbench\n')

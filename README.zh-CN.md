@@ -12,7 +12,7 @@
 
 `@brainpilot/dsh-neuro-previewer` · [GitHub](https://github.com/NeuroAIHub/NeuroPreviewer) · [MIT License](LICENSE)
 
-![NeuroPreviewer 多通道信号工作台](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-signal-workbench.png)
+![NeuroPreviewer NIfTI MPR 工作台](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-nifti-mpr.png)
 
 > **版本状态：** npm `0.1.0` 是稳定的静态预览版本；多格式工作台目前位于 `main`，版本为 `0.2.0-alpha.5`，需要从源码安装。两者均面向 DSH `0.1.0-rc.6`；DSH 仍处于开发者预览阶段，后续可能存在破坏性变更。
 
@@ -41,6 +41,22 @@
 | DICOM、FIF、CIFTI、GIFTI | 计划中 | DICOM 需要序列组装，其余格式需要新 Adapter |
 
 图像目前遵循 voxel 存储顺序，尚未应用 qform/sform 解剖方向重排。NeuroPreviewer 仅适用于科研数据检查和开发测试，不能用于临床判读或诊断。
+
+## 在 DSH 中的实际效果
+
+以下截图均由可重复的 Playwright 测试矩阵在真实本地 DSH `0.1.0-rc.6` 部署中生成，使用的公开科研数据及其来源见 [docs/real-datasets.md](docs/real-datasets.md)。
+
+| 从工作区打开 | NIfTI-1 `.nii.gz` MPR |
+| --- | --- |
+| ![工作区文件树](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-file-picker.png) | ![联动 NIfTI MPR 查看器](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-nifti-mpr.png) |
+
+| EDF/EDF+ 波形 | BrainVision 波形 |
+| --- | --- |
+| ![EDF 信号工作台](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-edf-workbench.png) | ![BrainVision 信号工作台](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-brainvision-workbench.png) |
+
+| EEGLAB 波形 | NWB 单元 spike count |
+| --- | --- |
+| ![EEGLAB 信号工作台](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-eeglab-workbench.png) | ![NWB Units 工作台](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-nwb-workbench.png) |
 
 ## 安装
 
@@ -155,15 +171,29 @@ npm run test:real
 
 ```bash
 npm run typecheck  # TypeScript 严格检查
-npm test           # 解析器、MPR session、RPC、DSH 集成
+npm test           # 快速解析器、安全、session、RPC 与工作区测试
 npx playwright install chromium # 首次运行时安装测试浏览器
 npm run test:design # 三个设计原型的浏览器交互检查
-npm run test:real  # 真实体数据与信号格式冒烟测试
+npm run test:real  # 解析全部已下载的真实体数据与信号 fixture
+npm run test:deep  # 类型检查 + 24 项测试 + 构建 + 完整真实数据矩阵
 npm run build      # Host ESM 与 DSH Web client bundle
 npm run check      # typecheck + unit tests + build
 ```
 
-DSH 浏览器集成检查覆盖工作区逐级导航、直接打开、真实 4D 数据、联动空间位置、时间移动和所选体素曲线。设计探索与可复现浏览器检查位于 `design-demos/`；`verify-dsh-integration.cjs` 接受一个运行中的 DSH URL 和一个 NIfTI 绝对路径。
+在 DSH 中运行刚刚构建的插件后，可执行完整浏览器矩阵：
+
+```bash
+npm run test:browser:real -- http://127.0.0.1:3080
+```
+
+当前深度测试矩阵包括：
+
+- **24 项确定性测试：** 大小端/数据类型、物理标定、混合采样率对齐、受限采样、损坏与截断输入、gzip 膨胀上限、配套文件路径约束、缓存淘汰、取消、RPC 序列化和工作区过滤。
+- **8 个真实文件：** 3D T1、4D fMRI、EDF、EDF+、BrainVision、EEGLAB 和两个 NWB session。
+- **5 个 DSH 端到端数据集：** `.nii.gz`、EDF+、BrainVision、EEGLAB、NWB，全部通过工作区文件树打开。
+- **直接交互断言：** 非对角 MPR 点击与准星、X/Y/Z/T 移动、有限波形几何、时间窗移动、窗口时长切换、通道翻页、DSH 主题变量和浏览器零报错。
+
+浏览器矩阵还会重新生成 `design-demos/screenshots/` 中的六张效果图。它需要先下载真实数据并启动 DSH；`npm run test:deep` 不依赖 DSH。
 
 ## 安全与资源限制
 
@@ -172,9 +202,11 @@ DSH 浏览器集成检查覆盖工作区逐级导航、直接打开、真实 4D 
 - Host 默认单文件上限 256 MiB，最多缓存两个打开的数据集。
 - 单切片默认上限为 4,194,304 像素；时间序列默认最多传输 1,024 个样本。
 - 浏览器接收三张归一化二维切片和受限时间序列，不接收完整体数据。
+- 信号视图默认最多传输八个可见通道，每条最多 1,024 个点，不传输完整记录。
 - 所有 header 派生的维度、偏移与乘法都会进行安全整数检查。
 - 读取和视图请求支持取消；UI 会丢弃过期响应。
 - DSH 当前文件系统没有 byte-range read，因此 Host 会完整读取符合限制的文件。
+- BrainVision marker、EDF+ annotation、EEGLAB 内嵌数组以及通用 NWB acquisition/processing group 尚未渲染。
 
 ## 路线图
 

@@ -12,19 +12,21 @@ function fixed(value: string | number, width: number): Uint8Array {
   return encoder.encode(String(value).padEnd(width).slice(0, width))
 }
 
-function syntheticEdf(): Uint8Array {
+function syntheticEdf(samplesPerRecord = [4, 4]): Uint8Array {
   const channelCount = 2
   const chunks = [
     fixed('0', 8), fixed('patient', 80), fixed('recording', 80), fixed('01.01.24', 8), fixed('12.00.00', 8),
     fixed(256 + channelCount * 256, 8), fixed('EDF+C', 44), fixed(1, 8), fixed(1, 8), fixed(channelCount, 4),
     fixed('C3', 16), fixed('C4', 16), fixed('', 80), fixed('', 80), fixed('uV', 8), fixed('uV', 8),
     fixed(-100, 8), fixed(-100, 8), fixed(100, 8), fixed(100, 8), fixed(-32768, 8), fixed(-32768, 8), fixed(32767, 8), fixed(32767, 8),
-    fixed('', 80), fixed('', 80), fixed(4, 8), fixed(4, 8), fixed('', 32), fixed('', 32),
+    fixed('', 80), fixed('', 80), fixed(samplesPerRecord[0] ?? 4, 8), fixed(samplesPerRecord[1] ?? 4, 8), fixed('', 32), fixed('', 32),
   ]
   const header = new Uint8Array(256 + channelCount * 256)
   let offset = 0
   for (const chunk of chunks) { header.set(chunk, offset); offset += chunk.length }
-  const values = new Int16Array([-32768, -16384, 0, 32767, 32767, 0, -16384, -32768])
+  const first = Array.from({ length: samplesPerRecord[0] ?? 4 }, (_, index) => Math.round(-32768 + index * 65535 / Math.max(1, (samplesPerRecord[0] ?? 4) - 1)))
+  const second = Array.from({ length: samplesPerRecord[1] ?? 4 }, (_, index) => Math.round(32767 - index * 65535 / Math.max(1, (samplesPerRecord[1] ?? 4) - 1)))
+  const values = new Int16Array([...first, ...second])
   const bytes = new Uint8Array(header.length + values.byteLength)
   bytes.set(header)
   const view = new DataView(bytes.buffer)
@@ -40,6 +42,25 @@ describe('signal format adapters', () => {
     expect(view.traces[0]?.samples[0]).toBeCloseTo(-100)
     expect(view.traces[0]?.samples[3]).toBeCloseTo(100)
     expect(view.traces[1]?.samples[0]).toBeCloseTo(100)
+  })
+
+  it('aligns mixed-rate EDF channels to the reference timeline and clamps requests', () => {
+    const adapter = openEdf(syntheticEdf([4, 2]))
+    expect(adapter.metadata.channels.map(channel => channel.sampleRate)).toEqual([4, 2])
+    const view = adapter.view({ startSample: -100, windowSamples: 99, channelStart: -2, channelCount: 99, maxPoints: 99 })
+    expect(view).toMatchObject({ startSample: 0, windowSamples: 4, timeStart: 0, timeEnd: 1 })
+    expect(view.traces).toHaveLength(2)
+    expect(view.traces[1]?.samples).toHaveLength(4)
+    expect(view.traces[1]?.samples[0]).toBeCloseTo(100)
+    expect(view.traces[1]?.samples[3]).toBeCloseTo(-100)
+  })
+
+  it('rejects truncated and inconsistent EDF files', () => {
+    expect(() => openEdf(syntheticEdf().subarray(0, 200))).toThrow(/fixed header/)
+    expect(() => openEdf(syntheticEdf().subarray(0, -2))).toThrow(/truncated/)
+    const inconsistent = syntheticEdf()
+    inconsistent.set(fixed(999, 8), 184)
+    expect(() => openEdf(inconsistent)).toThrow(/truncated or inconsistent/)
   })
 
   it('parses multiplexed BrainVision float32 data and channel resolution', () => {
@@ -63,6 +84,27 @@ Ch2=Cz,,2,uV
     const view = adapter.view({ startSample: 0, windowSamples: 2, channelStart: 0, channelCount: 2, maxPoints: 2 })
     expect(view.traces[0]?.samples).toEqual([1, 2])
     expect(view.traces[1]?.samples).toEqual([6, 10])
+  })
+
+  it('rejects unsupported BrainVision orientations and incomplete sample frames', () => {
+    const vectorized = encoder.encode(`Brain Vision Data Exchange Header File Version 1.0
+[Common Infos]
+DataFile=sample.eeg
+DataFormat=BINARY
+DataOrientation=VECTORIZED
+NumberOfChannels=1
+SamplingInterval=1000
+[Binary Infos]
+BinaryFormat=INT_16
+[Channel Infos]
+Ch1=Cz,,1,uV
+`)
+    expect(() => parseBrainVisionHeader(vectorized)).toThrow(/VECTORIZED is not supported/)
+
+    const multiplexed = encoder.encode(new TextDecoder().decode(vectorized).replace('VECTORIZED', 'MULTIPLEXED'))
+    const adapter = parseBrainVisionHeader(multiplexed).open(new Uint8Array([1, 0, 255]))
+    expect(adapter.metadata.sampleCount).toBe(1)
+    expect(adapter.warnings).toEqual([expect.stringContaining('Trailing bytes')])
   })
 
   it('opens compressed NIfTI and resolves BrainVision companion data through one interface', async () => {
@@ -106,5 +148,12 @@ Ch1=Cz,,1,uV
 `)
     const source: BinarySource = { async read(path) { if (path === '/study/scan.vhdr') return header; throw new Error(`unexpected read: ${path}`) } }
     await expect(new InteractiveNeuroPreview(source).open('/study/scan.vhdr')).rejects.toThrow(/escapes the header directory/)
+  })
+
+  it('bounds decompressed NIfTI size to prevent gzip expansion beyond the host limit', async () => {
+    const compressed = new Uint8Array(gzipSync(new Uint8Array(4096)))
+    const source: BinarySource = { async read() { return compressed } }
+    const preview = new InteractiveNeuroPreview(source, { maxFileBytes: 1024 })
+    await expect(preview.open('/study/oversized.nii.gz')).rejects.toThrow()
   })
 })

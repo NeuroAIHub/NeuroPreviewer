@@ -12,7 +12,7 @@
 
 `@brainpilot/dsh-neuro-previewer` · [GitHub](https://github.com/NeuroAIHub/NeuroPreviewer) · [MIT License](LICENSE)
 
-![NeuroPreviewer signal workbench](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-signal-workbench.png)
+![NeuroPreviewer NIfTI MPR workbench](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-nifti-mpr.png)
 
 > **Release status:** npm `0.1.0` is the stable static-preview release. The multi-format workbench is currently `0.2.0-alpha.5` on `main` and must be installed from source. Both target DSH `0.1.0-rc.6`; DSH is still a developer preview and may make breaking changes.
 
@@ -41,6 +41,22 @@
 | DICOM, FIF, CIFTI, GIFTI | Planned | DICOM needs series assembly; the others need additional adapters |
 
 Images currently follow voxel storage order; qform/sform reorientation is not yet applied. NeuroPreviewer is for research-data inspection and development, not clinical interpretation or diagnosis.
+
+## See it in DSH
+
+All screenshots below are captured by the reproducible Playwright matrix against a real local DSH `0.1.0-rc.6` deployment. They use the public research fixtures documented in [docs/real-datasets.md](docs/real-datasets.md).
+
+| Open from a workspace | NIfTI-1 `.nii.gz` MPR |
+| --- | --- |
+| ![Workspace tree picker](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-file-picker.png) | ![Linked NIfTI MPR viewer](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-nifti-mpr.png) |
+
+| EDF/EDF+ waveforms | BrainVision waveforms |
+| --- | --- |
+| ![EDF signal workbench](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-edf-workbench.png) | ![BrainVision signal workbench](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-brainvision-workbench.png) |
+
+| EEGLAB waveforms | NWB unit spike counts |
+| --- | --- |
+| ![EEGLAB signal workbench](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-eeglab-workbench.png) | ![NWB Units workbench](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-nwb-workbench.png) |
 
 ## Install
 
@@ -155,15 +171,29 @@ The real-data smoke test parses OpenNeuro T1/fMRI volumes, PhysioNet EDF/EDF+, O
 
 ```bash
 npm run typecheck  # strict TypeScript
-npm test           # parser, MPR session, RPC, DSH integration
+npm test           # fast parser, safety, session, RPC, and workspace tests
 npx playwright install chromium # one-time browser setup
 npm run test:design # browser checks for the three approved design prototypes
-npm run test:real  # real volume and signal format smoke tests
+npm run test:real  # parse all downloaded real volume and signal fixtures
+npm run test:deep  # typecheck + 24 tests + build + complete real-data smoke matrix
 npm run build      # Host ESM and DSH Web client bundles
 npm run check      # typecheck + unit tests + build
 ```
 
-The DSH browser integration check covers workspace traversal, direct opening, a real 4D dataset, linked position changes, time movement, and the selected-voxel plot. Design exploration and reproducible browser checks live under `design-demos/`; `verify-dsh-integration.cjs` accepts a running DSH URL and an absolute NIfTI path.
+With a freshly built plugin running in DSH, execute the complete browser matrix:
+
+```bash
+npm run test:browser:real -- http://127.0.0.1:3080
+```
+
+The current deep matrix covers:
+
+- **24 deterministic tests:** endian/datatype handling, calibration, mixed-rate alignment, bounded sampling, malformed/truncated input, gzip expansion limits, companion-path containment, cache eviction, cancellation, RPC serialization, and workspace filtering.
+- **8 real files:** 3D T1, 4D fMRI, EDF, EDF+, BrainVision, EEGLAB, and two NWB sessions.
+- **5 end-to-end DSH datasets:** `.nii.gz`, EDF+, BrainVision, EEGLAB, and NWB, all opened through the workspace tree.
+- **Direct interaction assertions:** non-diagonal MPR crosshair clicks, X/Y/Z/T movement, finite waveform geometry, time-window movement, duration changes, channel paging, DSH theme tokens, and absence of browser errors.
+
+The browser run also regenerates the six screenshots in `design-demos/screenshots/`. It requires the downloaded real-data corpus and a running DSH instance; `npm run test:deep` does not require DSH.
 
 ## Safety and limits
 
@@ -172,9 +202,11 @@ The DSH browser integration check covers workspace traversal, direct opening, a 
 - The Host defaults to a 256 MiB file limit and two cached open datasets.
 - Slice size defaults to 4,194,304 pixels; time-series transfer defaults to 1,024 samples.
 - The browser receives three normalized 2D frames and a bounded time series, not the full volume.
+- Signal views send at most eight visible channels and 1,024 points per trace by default, not the full recording.
 - Header-derived dimensions, offsets, and multiplications are checked as safe integers.
 - Reads and view requests support cancellation; stale UI responses are discarded.
 - DSH currently has no filesystem byte-range read, so the Host reads each accepted file in full.
+- BrainVision marker events, EDF+ annotations, embedded EEGLAB arrays, and general NWB acquisition/processing groups are not rendered yet.
 
 ## Roadmap
 

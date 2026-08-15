@@ -56,6 +56,8 @@
     "test:watch": "vitest",
     "test:design": "node design-demos/verify-prototypes.cjs",
     "test:real": "node scripts/smoke-real-data.mjs",
+    "test:deep": "npm run check && npm run test:real",
+    "test:browser:real": "node scripts/browser-real-matrix.mjs",
     "data:download": "bash scripts/download-real-data.sh",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test && npm run build",
