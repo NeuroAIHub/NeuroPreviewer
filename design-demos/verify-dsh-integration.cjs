@@ -22,6 +22,42 @@ async function main() {
       await continueButton.click()
       await continueButton.waitFor({ state: 'hidden' })
     }
+    const sidebarAlignment = await page.getByTitle('Open NeuroPreviewer').evaluate(element => {
+      const native = [...document.querySelectorAll('button[aria-label]')].find(button => [...button.classList].some(name => name.endsWith('_newSession')))
+        ?? [...document.querySelectorAll('button[aria-label]')].find(button => /^(New session|新建会话)$/.test(button.getAttribute('aria-label') ?? ''))
+      if (!(native instanceof HTMLElement)) throw new Error('native New Session button was not found')
+      const pluginIcon = element.querySelector('.np-logo')
+      const nativeIcon = native.querySelector('svg')
+      if (!(pluginIcon instanceof SVGElement) || !(nativeIcon instanceof SVGElement)) throw new Error('sidebar icon elements were not found')
+      const center = node => { const box = node.getBoundingClientRect(); return { x: box.x + box.width / 2, y: box.y + box.height / 2, width: box.width, height: box.height } }
+      return {
+        pluginButton: center(element), nativeButton: center(native),
+        pluginIcon: center(pluginIcon), nativeIcon: center(nativeIcon),
+      }
+    })
+    if (Math.abs(sidebarAlignment.pluginButton.x - sidebarAlignment.nativeButton.x) > 1 || Math.abs(sidebarAlignment.pluginButton.width - sidebarAlignment.nativeButton.width) > 1) {
+      throw new Error(`expanded NeuroPreviewer button does not match native sidebar geometry: ${JSON.stringify(sidebarAlignment)}`)
+    }
+    if (Math.abs(sidebarAlignment.pluginIcon.x - sidebarAlignment.nativeIcon.x) > 0.5) {
+      throw new Error(`expanded NeuroPreviewer icon is not aligned with the native icon: ${JSON.stringify(sidebarAlignment)}`)
+    }
+    await page.getByRole('button', { name: 'Collapse sidebar' }).click()
+    await page.locator('.np-trigger-compact').waitFor()
+    await page.waitForTimeout(350)
+    const collapsedAlignment = await page.getByTitle('Open NeuroPreviewer').evaluate(element => {
+      const native = [...document.querySelectorAll('button[aria-label]')].find(button => [...button.classList].some(name => name.endsWith('_newSession')))
+      if (!(native instanceof HTMLElement)) throw new Error('collapsed native New Session button was not found')
+      const pluginIcon = element.querySelector('.np-logo')
+      const nativeIcon = native.querySelector('svg')
+      if (!(pluginIcon instanceof SVGElement) || !(nativeIcon instanceof SVGElement)) throw new Error('collapsed sidebar icons were not found')
+      const center = node => { const box = node.getBoundingClientRect(); return { x: box.x + box.width / 2, width: box.width, height: box.height } }
+      return { pluginButton: center(element), nativeButton: center(native), pluginIcon: center(pluginIcon), nativeIcon: center(nativeIcon), sidebarWidth: native.parentElement?.getBoundingClientRect().width }
+    })
+    if (Math.abs(collapsedAlignment.pluginButton.x - collapsedAlignment.nativeButton.x) > 0.5 || Math.abs(collapsedAlignment.pluginIcon.x - collapsedAlignment.nativeIcon.x) > 0.5 || collapsedAlignment.sidebarWidth > 56) {
+      throw new Error(`collapsed NeuroPreviewer icon is not aligned with native icons: ${JSON.stringify(collapsedAlignment)}`)
+    }
+    await page.getByRole('button', { name: 'Open sidebar' }).click()
+    await page.locator('.np-trigger-wide').waitFor()
     // A fresh DSH_HOME opens product onboarding above all plugin UI. Force the
     // plugin action so this smoke test can exercise the plugin without storing
     // fake model credentials in the temporary profile.
