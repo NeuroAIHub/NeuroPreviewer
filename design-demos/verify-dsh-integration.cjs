@@ -64,6 +64,35 @@ async function main() {
     await page.locator('.np-shell canvas').first().waitFor({ state: 'visible', timeout: 20_000 })
     if (await page.locator('.np-shell canvas').count() !== 3) throw new Error('expected three linked MPR canvases')
 
+    const xControl = page.getByLabel('x position')
+    const yControl = page.getByLabel('y position')
+    const zControl = page.getByLabel('z position')
+    async function assertPlaneClickMoves(index, name, controls, position) {
+      const before = await Promise.all(controls.map(control => control.inputValue()))
+      const plane = page.locator('.np-plane').nth(index)
+      const box = await plane.boundingBox()
+      if (!box) throw new Error(`${name} canvas has no clickable bounds`)
+      await plane.click({ position: { x: box.width * position.x, y: box.height * position.y } })
+      await page.waitForTimeout(100)
+      const after = await Promise.all(controls.map(control => control.inputValue()))
+      if (after.some((value, valueIndex) => value === before[valueIndex])) {
+        throw new Error(`clicking the ${name} slice did not move the linked crosshair: before=${JSON.stringify(before)} after=${JSON.stringify(after)}`)
+      }
+      const verticalLine = await plane.locator('.np-cross-v').boundingBox()
+      const horizontalLine = await plane.locator('.np-cross-h').boundingBox()
+      if (!verticalLine || !horizontalLine) throw new Error(`${name} crosshair is not visible`)
+      const rendered = {
+        x: (verticalLine.x - box.x) / box.width,
+        y: (horizontalLine.y - box.y) / box.height,
+      }
+      if (Math.abs(rendered.x - position.x) > 0.025 || Math.abs(rendered.y - position.y) > 0.025) {
+        throw new Error(`clicking the ${name} slice placed the crosshair away from the click: click=${JSON.stringify(position)} crosshair=${JSON.stringify(rendered)}`)
+      }
+    }
+    await assertPlaneClickMoves(0, 'axial', [xControl, yControl], { x: 0.2, y: 0.75 })
+    await assertPlaneClickMoves(1, 'coronal', [xControl, zControl], { x: 0.75, y: 0.2 })
+    await assertPlaneClickMoves(2, 'sagittal', [yControl, zControl], { x: 0.35, y: 0.8 })
+
     await page.getByLabel('x position').evaluate(element => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, '40')
       element.dispatchEvent(new Event('input', { bubbles: true }))

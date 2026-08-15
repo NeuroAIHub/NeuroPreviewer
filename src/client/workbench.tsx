@@ -34,9 +34,9 @@ type Axis = 'axial' | 'coronal' | 'sagittal'
 
 function planePosition(axis: Axis, cursor: VoxelCursor, dimensions: readonly number[]) {
   const [x = 1, y = 1, z = 1] = dimensions
-  if (axis === 'axial') return { horizontal: cursor.y / Math.max(1, y - 1), vertical: cursor.x / Math.max(1, x - 1) }
-  if (axis === 'coronal') return { horizontal: cursor.z / Math.max(1, z - 1), vertical: cursor.x / Math.max(1, x - 1) }
-  return { horizontal: cursor.z / Math.max(1, z - 1), vertical: cursor.y / Math.max(1, y - 1) }
+  if (axis === 'axial') return { left: cursor.x / Math.max(1, x - 1), top: cursor.y / Math.max(1, y - 1) }
+  if (axis === 'coronal') return { left: cursor.x / Math.max(1, x - 1), top: cursor.z / Math.max(1, z - 1) }
+  return { left: cursor.y / Math.max(1, y - 1), top: cursor.z / Math.max(1, z - 1) }
 }
 
 function Plane({ axis, frame, cursor, dimensions, onPick }: {
@@ -44,7 +44,7 @@ function Plane({ axis, frame, cursor, dimensions, onPick }: {
   readonly frame: WireImage2DFrame
   readonly cursor: VoxelCursor
   readonly dimensions: readonly number[]
-  readonly onPick: (axis: Axis, horizontal: number, vertical: number) => void
+  readonly onPick: (axis: Axis, left: number, top: number) => void
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
@@ -62,9 +62,9 @@ function Plane({ axis, frame, cursor, dimensions, onPick }: {
     }}>
       <canvas ref={canvas} aria-label={`${axis} slice ${index}`} />
       <span className="np-plane-label">{axis} · {index}</span>
-      <span className="np-cross-v" style={{ left: `${position.vertical * 100}%` }} />
-      <span className="np-cross-h" style={{ top: `${position.horizontal * 100}%` }} />
-      <span className="np-cross-dot" style={{ left: `${position.vertical * 100}%`, top: `${position.horizontal * 100}%` }} />
+      <span className="np-cross-v" style={{ left: `${position.left * 100}%` }} />
+      <span className="np-cross-h" style={{ top: `${position.top * 100}%` }} />
+      <span className="np-cross-dot" style={{ left: `${position.left * 100}%`, top: `${position.top * 100}%` }} />
       <span className="np-plane-meta">{frame.width} × {frame.height}</span>
     </div>
   )
@@ -276,11 +276,11 @@ export function NeuroWorkbench({ controller }: { readonly controller: NeuroViewe
   if (dataset === undefined || view === undefined) return <WorkspaceFilePicker controller={controller} cancellable />
 
   const update = (key: keyof VoxelCursor, value: number) => setCursor(current => clampCursor({ ...current, [key]: value }, dimensions))
-  const pick = (axis: Axis, horizontal: number, vertical: number) => setCursor(current => {
+  const pick = (axis: Axis, left: number, top: number) => setCursor(current => {
     const [x = 1, y = 1, z = 1] = dimensions
-    if (axis === 'axial') return { ...current, x: Math.round(vertical * (x - 1)), y: Math.round(horizontal * (y - 1)) }
-    if (axis === 'coronal') return { ...current, x: Math.round(vertical * (x - 1)), z: Math.round(horizontal * (z - 1)) }
-    return { ...current, y: Math.round(vertical * (y - 1)), z: Math.round(horizontal * (z - 1)) }
+    if (axis === 'axial') return { ...current, x: Math.round(left * (x - 1)), y: Math.round(top * (y - 1)) }
+    if (axis === 'coronal') return { ...current, x: Math.round(left * (x - 1)), z: Math.round(top * (z - 1)) }
+    return { ...current, y: Math.round(left * (y - 1)), z: Math.round(top * (z - 1)) }
   })
   const [xDim = 1, yDim = 1, zDim = 1, tDim = 1] = dimensions
   const voxel = dataset.metadata.voxelSize.slice(0, 3).map(value => value.toFixed(2)).join(' × ')
