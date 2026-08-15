@@ -96,6 +96,25 @@ export interface InteractiveViewRequest extends VoxelCursor {
   readonly datasetId: string
 }
 
+export interface NeuroWorkspaceSummary {
+  readonly id: string
+  readonly title: string
+  readonly path: string
+}
+
+export interface NeuroWorkspaceEntry {
+  readonly name: string
+  readonly path: string
+  readonly type: 'directory' | 'file'
+  readonly size?: number
+}
+
+export interface NeuroWorkspaceListing {
+  readonly workspace: NeuroWorkspaceSummary
+  readonly path: string
+  readonly entries: readonly NeuroWorkspaceEntry[]
+}
+
 export interface BinarySource {
   read(path: string, signal?: AbortSignal): Promise<Uint8Array>
 }

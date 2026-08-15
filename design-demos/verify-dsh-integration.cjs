@@ -26,8 +26,21 @@ async function main() {
     await page.getByTitle('Open NeuroPreviewer').evaluate(element => element.click())
     await page.waitForTimeout(300)
     await page.screenshot({ path: 'design-demos/screenshots/dsh-after-trigger.png' })
-    await page.getByLabel('Dataset path').fill(datasetPath)
-    await page.getByRole('button', { name: 'Open viewer' }).click({ force: true })
+    const listedPath = await page.locator('.np-picker-path').textContent().catch(() => null)
+    if (listedPath && (datasetPath === listedPath || datasetPath.startsWith(`${listedPath}/`))) {
+      const relativeParts = datasetPath.slice(listedPath.length).split('/').filter(Boolean)
+      for (const [index, part] of relativeParts.entries()) {
+        await page.locator('.np-picker-row').filter({ has: page.getByText(part, { exact: true }) }).click()
+        if (index < relativeParts.length - 1) {
+          await page.locator('.np-picker-path').getByText(part, { exact: false }).waitFor()
+        }
+      }
+      await page.getByRole('button', { name: 'Open viewer' }).click()
+    } else {
+      await page.getByRole('button', { name: 'Open another host path…' }).click()
+      await page.getByLabel('Dataset path').fill(datasetPath)
+      await page.getByRole('button', { name: 'Open path' }).click()
+    }
     await page.waitForTimeout(1500)
     await page.screenshot({ path: 'design-demos/screenshots/dsh-after-open.png' })
     const openError = await page.locator('.np-error').textContent().catch(() => null)
@@ -49,7 +62,7 @@ async function main() {
     await page.screenshot({ path: 'design-demos/screenshots/dsh-interactive-workbench.png' })
     if (!await page.getByText('T 120', { exact: true }).isVisible()) throw new Error('time control did not move to volume 120')
     if (errors.length > 0) throw new Error(`browser errors: ${errors.join('; ')}`)
-    process.stdout.write('PASS DSH interactive MPR workbench\n')
+    process.stdout.write('PASS DSH workspace picker and interactive MPR workbench\n')
   } finally {
     await browser.close()
   }

@@ -6,3 +6,5 @@ coverage/
 test-data/real/
 design-demos/screenshots/dsh-after-*.png
 design-demos/screenshots/dsh-interactive-home.png
+design-demos/screenshots/dsh-add-workspace.png
+design-demos/screenshots/dsh-workspace-picker-debug.png

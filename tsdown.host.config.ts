@@ -13,6 +13,7 @@ export default defineConfig({
     '@deepseek-ai/cordis',
     '@deepseek-ai/dsh-client-connection',
     '@deepseek-ai/dsh-fs',
+    '@deepseek-ai/dsh-workspace',
     '@deepseek-ai/dsh-tools',
   ],
 })

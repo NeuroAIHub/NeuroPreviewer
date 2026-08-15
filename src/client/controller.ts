@@ -1,6 +1,8 @@
 import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
 import type {
   InteractiveViewRequest,
+  NeuroWorkspaceListing,
+  NeuroWorkspaceSummary,
   VoxelCursor,
   WireInteractiveDataset,
   WireInteractivePreviewView,
@@ -11,6 +13,8 @@ export interface ViewerSnapshot {
   readonly loading: boolean
   readonly dataset?: WireInteractiveDataset
   readonly view?: WireInteractivePreviewView
+  readonly workspaces?: readonly NeuroWorkspaceSummary[]
+  readonly listing?: NeuroWorkspaceListing
   readonly error?: string
 }
 
@@ -40,6 +44,50 @@ export class NeuroViewerController {
     const { error: _error, ...snapshot } = this.#snapshot
     this.#set({ ...snapshot, visible: true })
     if (path !== undefined) void this.open(path)
+    else if (this.#snapshot.dataset === undefined) void this.loadWorkspaces()
+  }
+
+  async loadWorkspaces(): Promise<void> {
+    const { signal, generation } = this.#beginRequest()
+    const { error: _error, listing: _listing, ...snapshot } = this.#snapshot
+    this.#set({ ...snapshot, visible: true, loading: true })
+    try {
+      const result = await this.rpc.call('/neuro-preview', 'workspaces', {}, signal)
+      if (generation !== this.#generation) return
+      const workspaces = resultValue<readonly NeuroWorkspaceSummary[]>(result)
+      this.#set({ ...snapshot, visible: true, loading: false, workspaces })
+      if (workspaces.length === 1) await this.browse(workspaces[0]?.id ?? '')
+    } catch (error) {
+      if (signal.aborted || generation !== this.#generation) return
+      this.#set({ ...snapshot, visible: true, loading: false, error: error instanceof Error ? error.message : String(error) })
+    }
+  }
+
+  async browse(workspaceId: string, path?: string): Promise<void> {
+    const { signal, generation } = this.#beginRequest()
+    const { error: _error, ...snapshot } = this.#snapshot
+    this.#set({ ...snapshot, visible: true, loading: true })
+    try {
+      const result = await this.rpc.call('/neuro-preview', 'browse', {
+        workspaceId,
+        ...(path === undefined ? {} : { path }),
+      }, signal)
+      if (generation !== this.#generation) return
+      this.#set({
+        ...snapshot,
+        visible: true,
+        loading: false,
+        listing: resultValue<NeuroWorkspaceListing>(result),
+      })
+    } catch (error) {
+      if (signal.aborted || generation !== this.#generation) return
+      this.#set({ ...snapshot, visible: true, loading: false, error: error instanceof Error ? error.message : String(error) })
+    }
+  }
+
+  showWorkspaceRoots(): void {
+    const { listing: _listing, error: _error, ...snapshot } = this.#snapshot
+    this.#set({ ...snapshot, visible: true })
   }
 
   hide(): void {
@@ -54,19 +102,20 @@ export class NeuroViewerController {
 
   async open(path: string): Promise<void> {
     const previousId = this.#snapshot.dataset?.datasetId
-    if (previousId !== undefined) {
-      void this.rpc.call('/neuro-preview', 'close', { datasetId: previousId }).catch(() => undefined)
-    }
     const { signal, generation } = this.#beginRequest()
-    this.#set({ visible: true, loading: true })
+    const { error: _error, ...snapshot } = this.#snapshot
+    this.#set({ ...snapshot, visible: true, loading: true })
     try {
       const result = await this.rpc.call('/neuro-preview', 'open', { path }, signal)
       if (generation !== this.#generation) return
       const dataset = resultValue<WireInteractiveDataset>(result)
-      this.#set({ visible: true, loading: false, dataset, view: dataset.view })
+      this.#set({ ...snapshot, visible: true, loading: false, dataset, view: dataset.view })
+      if (previousId !== undefined && previousId !== dataset.datasetId) {
+        void this.rpc.call('/neuro-preview', 'close', { datasetId: previousId }).catch(() => undefined)
+      }
     } catch (error) {
       if (signal.aborted || generation !== this.#generation) return
-      this.#set({ visible: true, loading: false, error: error instanceof Error ? error.message : String(error) })
+      this.#set({ ...snapshot, visible: true, loading: false, error: error instanceof Error ? error.message : String(error) })
     }
   }
 

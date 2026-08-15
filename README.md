@@ -14,13 +14,14 @@
 
 ![NeuroPreviewer interactive MPR workbench](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-interactive-workbench.png)
 
-> **Release status:** npm `0.1.0` is the stable static-preview release. The interactive workbench is currently `0.2.0-alpha.1` on `main` and must be installed from source. Both target DSH `0.1.0-rc.6`; DSH is still a developer preview and may make breaking changes.
+> **Release status:** npm `0.1.0` is the stable static-preview release. The interactive workbench is currently `0.2.0-alpha.2` on `main` and must be installed from source. Both target DSH `0.1.0-rc.6`; DSH is still a developer preview and may make breaking changes.
 
 ## What it does
 
 | Capability | Status | Details |
 | --- | --- | --- |
 | Direct DSH viewer entry | ✅ alpha | Opens from the sidebar without requiring a conversation |
+| Workspace file picker | ✅ alpha | Browses registered workspaces one directory at a time and shows supported files |
 | Linked MPR views | ✅ alpha | Axial, coronal, and sagittal canvases share one voxel cursor |
 | Direct spatial navigation | ✅ alpha | Click a plane or move the X/Y/Z sliders |
 | 4D navigation | ✅ alpha | Scrub, step, or play fMRI volumes |
@@ -81,9 +82,12 @@ The dumped configuration should include:
 
 1. Start the DSH Web profile.
 2. Click **NeuroPreviewer** in the DSH sidebar.
-3. Enter an absolute `.nii` path accessible to the DSH Host.
-4. Click any anatomical plane or move X/Y/Z to change the shared voxel.
-5. For 4D data, scrub or play the time control; the selected-voxel plot updates with it.
+3. If one workspace is registered, its root opens immediately; otherwise choose a workspace.
+4. Enter folders one level at a time, select a `.nii` file, and click **Open viewer** (or double-click the file).
+5. Click any anatomical plane or move X/Y/Z to change the shared voxel.
+6. For 4D data, scrub or play the time control; the selected-voxel plot updates with it.
+
+The picker hides dot-prefixed entries and unsupported files. An advanced absolute-path field remains available under **Open another host path…**.
 
 The same viewer can be opened from the preview card after a conversational tool call. Conversation is an optional entry point, not a requirement for interaction.
 
@@ -106,7 +110,7 @@ Without the Web extension, the tool still returns a text summary of dimensions, 
 DSH sidebar ───────────────┐
                           ├──► Web MPR workbench
 neuro_preview result card ┘          │
-                                     │ loopback RPC: open / view / close
+                                     │ loopback RPC: workspaces / browse / open / view / close
                                      ▼
                             InteractiveNeuroPreview
                               bounded Host cache
@@ -125,6 +129,7 @@ The static tool path and interactive session share the same format-neutral NIfTI
 - `src/core/interactive.ts`: owns bounded datasets and produces synchronized MPR views.
 - `src/dsh/source.ts`: adapts DSH `ctx.fs` into a size-limited binary source.
 - `src/dsh/rpc.ts`: exposes loopback-only `open`, `view`, and `close` operations.
+- `src/dsh/workspace-browser.ts`: lists registered roots and filters contained directories and supported files.
 - `src/index.ts`: registers the Host tool, configuration, and RPC service.
 - `src/client/workbench.tsx`: renders the DSH MPR workbench and direct controls.
 
@@ -151,7 +156,7 @@ npm run build      # Host ESM and DSH Web client bundles
 npm run check      # typecheck + unit tests + build
 ```
 
-The DSH browser integration check covers direct opening, a real 4D dataset, linked position changes, time movement, and the selected-voxel plot. Design exploration and reproducible browser checks live under `design-demos/`; `verify-dsh-integration.cjs` accepts a running DSH URL and an absolute NIfTI path.
+The DSH browser integration check covers workspace traversal, direct opening, a real 4D dataset, linked position changes, time movement, and the selected-voxel plot. Design exploration and reproducible browser checks live under `design-demos/`; `verify-dsh-integration.cjs` accepts a running DSH URL and an absolute NIfTI path.
 
 ## Safety and limits
 

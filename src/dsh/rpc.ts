@@ -4,6 +4,7 @@ import type { ConnectionRpcHandler } from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-client-connection'
 import { NeuroPreviewError } from '../core/nifti.js'
 import type { InteractiveNeuroPreview } from '../core/interactive.js'
+import type { WorkspaceFileBrowser } from './workspace-browser.js'
 import type {
   InteractivePreviewView,
   InteractiveViewRequest,
@@ -75,10 +76,32 @@ function requiredInteger(payload: Record<string, unknown>, key: keyof VoxelCurso
   return value
 }
 
-export function createNeuroPreviewRpcHandler(preview: InteractiveNeuroPreview): ConnectionRpcHandler {
+export function createNeuroPreviewRpcHandler(
+  preview: InteractiveNeuroPreview,
+  workspaceBrowser?: WorkspaceFileBrowser,
+): ConnectionRpcHandler {
   return async (endpoint, rawPayload, signal) => {
     try {
       const payload = objectPayload(rawPayload)
+      if (endpoint === 'workspaces') {
+        if (workspaceBrowser === undefined) return internalError('Workspace browser is unavailable')
+        return { ok: true, value: workspaceBrowser.roots() }
+      }
+      if (endpoint === 'browse') {
+        if (workspaceBrowser === undefined) return internalError('Workspace browser is unavailable')
+        const rawPath = payload.path
+        if (rawPath !== undefined && typeof rawPath !== 'string') {
+          throw new NeuroPreviewError('path must be a string when provided', 'INVALID_REQUEST')
+        }
+        return {
+          ok: true,
+          value: await workspaceBrowser.list(
+            requiredString(payload, 'workspaceId'),
+            rawPath,
+            signal,
+          ),
+        }
+      }
       if (endpoint === 'open') {
         const opened = await preview.open(requiredString(payload, 'path'), signal)
         const value: WireInteractiveDataset = { ...opened, view: wireView(opened.view) }
@@ -108,8 +131,12 @@ export function createNeuroPreviewRpcHandler(preview: InteractiveNeuroPreview): 
   }
 }
 
-export function registerNeuroPreviewRpc(ctx: Context, preview: InteractiveNeuroPreview): void {
-  const handler = createNeuroPreviewRpcHandler(preview)
+export function registerNeuroPreviewRpc(
+  ctx: Context,
+  preview: InteractiveNeuroPreview,
+  workspaceBrowser: WorkspaceFileBrowser,
+): void {
+  const handler = createNeuroPreviewRpcHandler(preview, workspaceBrowser)
   ctx.inject(['connection'], connectionCtx => connectionCtx.connection.rpc.handle(
     CHANNEL,
     handler,

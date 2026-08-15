@@ -14,13 +14,14 @@
 
 ![NeuroPreviewer 交互式 MPR 工作台](https://raw.githubusercontent.com/NeuroAIHub/NeuroPreviewer/main/design-demos/screenshots/dsh-interactive-workbench.png)
 
-> **版本状态：** npm `0.1.0` 是稳定的静态预览版本；交互工作台目前位于 `main`，版本为 `0.2.0-alpha.1`，需要从源码安装。两者均面向 DSH `0.1.0-rc.6`；DSH 仍处于开发者预览阶段，后续可能存在破坏性变更。
+> **版本状态：** npm `0.1.0` 是稳定的静态预览版本；交互工作台目前位于 `main`，版本为 `0.2.0-alpha.2`，需要从源码安装。两者均面向 DSH `0.1.0-rc.6`；DSH 仍处于开发者预览阶段，后续可能存在破坏性变更。
 
 ## 当前能力
 
 | 能力 | 状态 | 说明 |
 | --- | --- | --- |
 | DSH 直接入口 | ✅ alpha | 从侧边栏打开，不需要先发起对话 |
+| 工作区文件选择器 | ✅ alpha | 从已注册工作区逐级进入目录，只展示支持的文件 |
 | 联动 MPR | ✅ alpha | axial、coronal、sagittal 三个切面共享同一体素光标 |
 | 空间交互 | ✅ alpha | 点击任一切面，或移动 X/Y/Z 滑块 |
 | 4D 时间交互 | ✅ alpha | 拖动、逐帧或播放 fMRI volume |
@@ -81,9 +82,12 @@ dsh --profile web
 
 1. 启动 DSH Web profile。
 2. 点击 DSH 侧边栏中的 **NeuroPreviewer**。
-3. 输入 DSH Host 可访问的 `.nii` 绝对路径。
-4. 点击任一解剖切面，或移动 X/Y/Z，改变共享体素位置。
-5. 对 4D 数据拖动或播放时间控件；所选体素的时间序列会同步更新。
+3. 如果只注册了一个工作区，插件会直接进入其根目录；否则先选择工作区。
+4. 逐级进入目录，选中 `.nii` 文件后点击 **Open viewer**，也可以双击文件。
+5. 点击任一解剖切面，或移动 X/Y/Z，改变共享体素位置。
+6. 对 4D 数据拖动或播放时间控件；所选体素的时间序列会同步更新。
+
+选择器会隐藏点号开头的目录和不支持的文件；高级用户仍可通过 **Open another host path…** 输入绝对路径。
 
 对话触发 `neuro_preview` 后，也可以从结果卡片进入同一个查看器。对话只是可选入口，不是交互预览的前置条件。
 
@@ -106,7 +110,7 @@ dsh --profile web
 DSH 侧边栏 ───────────────┐
                           ├──► Web MPR 工作台
 neuro_preview 结果卡片 ───┘          │
-                                     │ loopback RPC：open / view / close
+                                     │ loopback RPC：workspaces / browse / open / view / close
                                      ▼
                             InteractiveNeuroPreview
                               Host 受限数据缓存
@@ -125,6 +129,7 @@ neuro_preview 结果卡片 ───┘          │
 - `src/core/interactive.ts`：管理受限数据集，并生成同步 MPR 视图。
 - `src/dsh/source.ts`：将 DSH `ctx.fs` 适配为有大小上限的二进制数据源。
 - `src/dsh/rpc.ts`：暴露仅限 loopback 的 `open`、`view`、`close` 操作。
+- `src/dsh/workspace-browser.ts`：列出工作区根目录，并过滤越界目录与支持的数据文件。
 - `src/index.ts`：注册 Host 工具、配置和 RPC 服务。
 - `src/client/workbench.tsx`：实现 DSH MPR 工作台和直接交互控件。
 
@@ -151,7 +156,7 @@ npm run build      # Host ESM 与 DSH Web client bundle
 npm run check      # typecheck + unit tests + build
 ```
 
-DSH 浏览器集成检查覆盖直接打开、真实 4D 数据、联动空间位置、时间移动和所选体素曲线。设计探索与可复现浏览器检查位于 `design-demos/`；`verify-dsh-integration.cjs` 接受一个运行中的 DSH URL 和一个 NIfTI 绝对路径。
+DSH 浏览器集成检查覆盖工作区逐级导航、直接打开、真实 4D 数据、联动空间位置、时间移动和所选体素曲线。设计探索与可复现浏览器检查位于 `design-demos/`；`verify-dsh-integration.cjs` 接受一个运行中的 DSH URL 和一个 NIfTI 绝对路径。
 
 ## 安全与资源限制
 

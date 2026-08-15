@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
 import { InteractiveNeuroPreview } from '../src/core/interactive.js'
 import type { BinarySource } from '../src/core/types.js'
 import { createNeuroPreviewRpcHandler } from '../src/dsh/rpc.js'
+import { WorkspaceFileBrowser } from '../src/dsh/workspace-browser.js'
 import { niftiInt16Fixture } from './fixture.js'
 
 describe('NeuroPreviewer RPC Adapter', () => {
@@ -52,6 +54,34 @@ describe('NeuroPreviewer RPC Adapter', () => {
     expect(await handler('unknown', {}, signal)).toMatchObject({
       ok: false,
       error: { code: 'bad-request' },
+    })
+  })
+
+  it('exposes registered workspaces and bounded directory listings', async () => {
+    const workspace = { id: 'w1', title: 'Study', path: '/study', async status() { return 'ok' as const } }
+    const ctx = {
+      workspaceRegistry: { list: () => [workspace] },
+      fs: {
+        async resolve(path: string) { return { targetKey: path, displayPath: path } },
+        contains(parent: { displayPath: string }, child: { displayPath: string }) { return child.displayPath.startsWith(parent.displayPath) },
+        async stat() { return { type: 'directory', version: 'v1' } },
+        async listDir() { return [{ name: 'scan.nii', type: 'file', size: 12, target: { targetKey: '/study/scan.nii', displayPath: '/study/scan.nii' } }] },
+      },
+    } as unknown as Context
+    const source: BinarySource = { async read() { return niftiInt16Fixture() } }
+    const handler = createNeuroPreviewRpcHandler(
+      new InteractiveNeuroPreview(source),
+      new WorkspaceFileBrowser(ctx),
+    )
+    const signal = new AbortController().signal
+
+    expect(await handler('workspaces', {}, signal)).toEqual({
+      ok: true,
+      value: [{ id: 'w1', title: 'Study', path: '/study' }],
+    })
+    expect(await handler('browse', { workspaceId: 'w1' }, signal)).toMatchObject({
+      ok: true,
+      value: { path: '/study', entries: [{ name: 'scan.nii', type: 'file' }] },
     })
   })
 })

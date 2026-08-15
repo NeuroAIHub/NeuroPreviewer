@@ -9,6 +9,8 @@ import { NeuroPreview } from './core/preview.js'
 import type { CorePreviewDocument, PreviewDocument, SliceAxis } from './core/types.js'
 import { DshBinarySource } from './dsh/source.js'
 import { registerNeuroPreviewRpc } from './dsh/rpc.js'
+import { WorkspaceFileBrowser } from './dsh/workspace-browser.js'
+import type {} from '@deepseek-ai/dsh-workspace'
 
 export * from './core/nifti.js'
 export * from './core/interactive.js'
@@ -16,7 +18,7 @@ export * from './core/preview.js'
 export type * from './core/types.js'
 
 export const name = 'neuro-previewer'
-export const inject = ['tools', 'fs']
+export const inject = ['tools', 'fs', 'workspaceRegistry']
 
 export interface Config {
   readonly maxFileBytes?: number
@@ -86,7 +88,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     maxOpenDatasets,
     maxTimeSeriesPoints,
   })
-  registerNeuroPreviewRpc(ctx, interactivePreview)
+  registerNeuroPreviewRpc(ctx, interactivePreview, new WorkspaceFileBrowser(ctx))
 
   ctx.tools.register(defineTool({
     name: 'neuro_preview',
