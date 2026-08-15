@@ -21,3 +21,5 @@ Conversation context: the immediately preceding recommendation was “以 B 为�
 ## Workspace picker iteration
 
 User request on 2026-08-15: “好的，请你开始修改，也可以没有‘最近文件’，主要是用户可以一级一级选文件”. This is an iteration within the approved B+C direction: the sidebar launcher now opens a workspace-scoped, one-directory-at-a-time file picker without a recent-files surface.
+
+Follow-up request on 2026-08-15: “首先，这个文件选择做成弹窗，不要覆盖整个屏幕，其次，这个logo需要调整，并且放在左侧栏靠上方的位置的最后一个；以及点击一个文件夹后，应该是下拉出现很多下一级文件，而不是直接进入此文件夹，看不到上一级”. The approved iteration uses a compact non-blocking popup, a new MPR/crosshair logo below New Session, and an in-place expandable directory tree.

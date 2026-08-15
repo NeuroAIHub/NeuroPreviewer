@@ -5,7 +5,7 @@ import type { SidebarFooterActionOwnerProps } from '@deepseek-ai/dsh-client-ui-s
 import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
 import { NeuroViewerController } from './client/controller.js'
 import { NeuroPreviewRow } from './client/tool-row.js'
-import { NeuroPreviewTrigger, NeuroWorkbench } from './client/workbench.js'
+import { NeuroPreviewSidebarEntry, NeuroWorkbench } from './client/workbench.js'
 
 export const inject = ['slots', 'connection']
 
@@ -22,6 +22,6 @@ export function apply(ctx: ClientContext): void {
   ))
   ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register(
     { name: 'sidebar.footer.action', id: 'neuro-previewer', order: 70, label: 'NeuroPreviewer' },
-    ({ wide }: SidebarFooterActionOwnerProps) => <NeuroPreviewTrigger wide={wide} controller={controller} />,
+    ({ wide }: SidebarFooterActionOwnerProps) => <NeuroPreviewSidebarEntry wide={wide} controller={controller} />,
   ))
 }

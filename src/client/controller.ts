@@ -68,21 +68,30 @@ export class NeuroViewerController {
     const { error: _error, ...snapshot } = this.#snapshot
     this.#set({ ...snapshot, visible: true, loading: true })
     try {
-      const result = await this.rpc.call('/neuro-preview', 'browse', {
-        workspaceId,
-        ...(path === undefined ? {} : { path }),
-      }, signal)
+      const listing = await this.listDirectory(workspaceId, path, signal)
       if (generation !== this.#generation) return
       this.#set({
         ...snapshot,
         visible: true,
         loading: false,
-        listing: resultValue<NeuroWorkspaceListing>(result),
+        listing,
       })
     } catch (error) {
       if (signal.aborted || generation !== this.#generation) return
       this.#set({ ...snapshot, visible: true, loading: false, error: error instanceof Error ? error.message : String(error) })
     }
+  }
+
+  async listDirectory(
+    workspaceId: string,
+    path?: string,
+    signal?: AbortSignal,
+  ): Promise<NeuroWorkspaceListing> {
+    const result = await this.rpc.call('/neuro-preview', 'browse', {
+      workspaceId,
+      ...(path === undefined ? {} : { path }),
+    }, signal)
+    return resultValue<NeuroWorkspaceListing>(result)
   }
 
   showWorkspaceRoots(): void {
